@@ -1,11 +1,19 @@
 import sqlite3 as dbapi
 import csv
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
 
 
 conn = dbapi.connect('filmi.sqlite')
 conn.execute("PRAGMA foreign_keys = ON;")
+
+
+TIPI = {
+    int: 'INTEGER',
+    str: 'TEXT',
+    bool: 'INTEGER',
+    bytes: 'BLOB'
+}
 
 
 def polje(privzeto=None):
@@ -105,6 +113,7 @@ class Entiteta(Tabela):
         return getattr(self, self.IME) if self \
             else f"<entiteta tipa {self.__class__}>"
 
+
     def __init_subclass__(cls, /, **kwargs):
         """
         Inicializacija podrazreda.
@@ -114,6 +123,25 @@ class Entiteta(Tabela):
         super().__init_subclass__(dodaj=True, **kwargs)
         cls.NULL = cls()
 
+    @classmethod
+    def _ime_tabele(cls):
+        """
+        Vrni ime tabele.
+        """
+        return cls.__name__.lower()
+
+    @classmethod
+    def ustvari_tabelo(cls, cur=None):
+        """
+        Ustvari tabelo.
+        """
+        stolpci = ', '.join(f'{f.name} {TIPI[f.type]}' for f in fields(cls))
+        with Kazalec(cur) as cur:
+            cur.execute(f"""
+                CREATE TABLE {cls._ime_tabele()} (
+                    {stolpci}
+                );
+            """)
 
 class Odnos(Tabela):
     def __init_subclass__(cls, /, **kwargs):
