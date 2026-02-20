@@ -6,126 +6,21 @@
 #
 
 import bcrypt
-import csv
-import sqlite3 as dbapi
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json
+from orm import Entiteta, Odnos
+from orm import polje, pobrisi_tabele, ustvari_bazo
 
+# TODO: odstrani!
+from orm import conn, Kazalec
+from orm import dbapi
 
-conn = dbapi.connect('filmi.sqlite')
-conn.execute("PRAGMA foreign_keys = ON;")
-
-
-class Kazalec:
-    """
-    Upravitelj konteksta za kazalce.
-    """
-
-    def __init__(self, cur=None):
-        """
-        Konstruktor upravitelja konteksta.
-
-        Če kazalec ni podan, odpre novega, sicer uporabi podanega.
-        """
-        if cur is None:
-            self.cur = conn.cursor()
-            self.close = True
-        else:
-            self.cur = cur
-            self.close = False
-
-    def __enter__(self):
-        """
-        Vstop v kontekst z `with`.
-
-        Vrne kazalec - ta se shrani v spremenljivko, podano z `as`.
-        """
-        return self.cur
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Izstop iz konteksta.
-
-        Če je bil ustvarjen nov kazalec, se ta zapre.
-        """
-        if self.close:
-            self.cur.close()
-
-
-class Tabela:
-    """
-    Nadrazred za tabele.
-    """
-
-    TABELE = []
-
-    def __init_subclass__(cls, /, **kwargs):
-        """
-        Inicializacija podrazreda.
-
-        Doda podrazred v seznam tabel.
-        """
-        super().__init_subclass__(**kwargs)
-        cls.TABELE.append(cls)
-
-    @classmethod
-    def uvozi_podatke(cls, cur=None):
-        """
-        Uvozi podatke v tabelo.
-
-        Privzeto ne naredi ničesar, podrazredi naj povozijo definicijo.
-        """
-        pass
-
-    @classmethod
-    def preberi_vir(cls):
-        """
-        Preberi vir v obliki CSV in vračaj slovarje za vsako vrstico.
-        """
-        with open(f"podatki/{cls.VIR}", encoding='utf-8') as f:
-            rd = csv.reader(f)
-            stolpci = next(rd)
-            for vrstica in rd:
-                yield dict(zip(stolpci, vrstica))
-
-
-class Entiteta:
-    """
-    Nadrazred za posamezne entitetne tipe.
-    """
-    def __bool__(self):
-        """
-        Pretvorba v logično vrednost.
-        """
-        return getattr(self, self.IME) is not None
-
-    def __str__(self):
-        """
-        Znakovna predstavitev.
-        """
-        return getattr(self, self.IME) if self \
-            else f"<entiteta tipa {self.__class__}>"
-
-    def __init_subclass__(cls, /, **kwargs):
-        """
-        Inicializacija podrazreda.
-
-        Pripravi prazen objekt.
-        """
-        super().__init_subclass__(**kwargs)
-        cls.NULL = cls()
-
-
-@dataclass_json
-@dataclass
-class Uporabnik(Tabela, Entiteta):
+class Uporabnik(Entiteta):
     """
     Razred za uporabnika.
     """
-    id: int = field(default=None)
-    uporabnisko_ime: str = field(default=None)
-    admin: bool = field(default=False)
-    geslo: bytes = field(default=None)
+    id: int = polje()
+    uporabnisko_ime: str = polje()
+    admin: bool = polje(privzeto=False)
+    geslo: bytes = polje()
 
     IME = 'uporabnisko_ime'
     VIR = 'uporabnik.csv'
@@ -251,14 +146,12 @@ class Uporabnik(Tabela, Entiteta):
                 cur.execute(sql, [zgostitev, self.id])
 
 
-@dataclass_json
-@dataclass
-class Oznaka(Tabela, Entiteta):
+class Oznaka(Entiteta):
     """
     Razred za oznako filma.
     """
 
-    kratica: str = field(default=None)
+    kratica: str = polje()
 
     IME = 'kratica'
 
@@ -294,23 +187,21 @@ class Oznaka(Tabela, Entiteta):
             cur.execute(sql)
             yield from (Oznaka(kratica) for kratica, in cur)
 
-@dataclass_json
-@dataclass
-class Film(Tabela, Entiteta):
+class Film(Entiteta):
     """
     Razred za film.
     """
 
-    id: int = field(default=None)
-    naslov: str = field(default=None)
-    dolzina: int = field(default=None)
-    leto: int = field(default=None)
-    ocena: float = field(default=None)
-    metascore: int = field(default=None)
-    glasovi: int = field(default=0)
-    zasluzek: int = field(default=None)
-    oznaka: Oznaka = field(default=None)
-    opis: str = field(default=None)
+    id: int = polje()
+    naslov: str = polje()
+    dolzina: int = polje()
+    leto: int = polje()
+    ocena: float = polje()
+    metascore: int = polje()
+    glasovi: int = polje(privzeto=0)
+    zasluzek: int = polje()
+    oznaka: Oznaka = polje()
+    opis: str = polje()
 
     VIR = "film.csv"
     IME = 'naslov'
@@ -483,14 +374,12 @@ class Film(Tabela, Entiteta):
             yield from (Vloga(self, Oseba(oid, ime), tip, mesto)
                         for oid, ime, tip, mesto in cur)
 
-@dataclass_json
-@dataclass
-class Oseba(Tabela, Entiteta):
+class Oseba(Entiteta):
     """
     Razred za osebo.
     """
-    id: int = field(default=None)
-    ime: str = field(default=None)
+    id: int = polje()
+    ime: str = polje()
 
     VIR = "oseba.csv"
     IME = 'ime'
@@ -577,15 +466,13 @@ class Oseba(Tabela, Entiteta):
             yield from (Oseba(*vrstica) for vrstica in cur)
 
 
-@dataclass_json
-@dataclass
-class Zanr(Tabela, Entiteta):
+class Zanr(Entiteta):
     """
     Razred za žanr.
     """
 
-    id: int = field(default=None)
-    naziv: str = field(default=None)
+    id: int = polje()
+    naziv: str = polje()
 
     IME = 'naziv'
 
@@ -613,9 +500,7 @@ class Zanr(Tabela, Entiteta):
             """)
 
 
-@dataclass_json
-@dataclass
-class Vloga(Tabela):
+class Vloga(Odnos):
     """
     Razred za vlogo.
     """
@@ -678,9 +563,7 @@ class Vloga(Tabela):
         return self.VLOGE[self.tip]
 
 
-@dataclass_json
-@dataclass
-class Pripada(Tabela):
+class Pripada(Odnos):
     """
     Razred za pripadnost filma žanru.
     """
@@ -743,46 +626,3 @@ class Pripada(Tabela):
                     INSERT INTO pripada (film, zanr)
                     VALUES (:film, :zanr);
                 """, vrstica)
-
-
-def ustvari_tabele(cur=None):
-    """
-    Ustvari vse tabele.
-    """
-    with Kazalec(cur) as cur:
-        for t in Tabela.TABELE:
-            t.ustvari_tabelo(cur=cur)
-
-
-def pobrisi_tabele(cur=None):
-    """
-    Pobriši vse tabele.
-    """
-    with Kazalec(cur) as cur:
-        for t in reversed(Tabela.TABELE):
-            t.pobrisi_tabelo(cur=cur)
-
-
-def uvozi_podatke(cur=None):
-    """
-    Uvozi vse podatke.
-    """
-    with Kazalec(cur) as cur:
-        for t in Tabela.TABELE:
-            t.uvozi_podatke(cur=cur)
-
-
-def ustvari_bazo(pobrisi=False, cur=None):
-    """
-    Ustvari tabele in uvozi podatke.
-    """
-    with Kazalec(cur) as cur:
-        try:
-            with conn:
-                cur.execute("PRAGMA foreign_keys = OFF;")
-                if pobrisi:
-                    pobrisi_tabele(cur=cur)
-                ustvari_tabele(cur=cur)
-                uvozi_podatke(cur=cur)
-        finally:
-            cur.execute("PRAGMA foreign_keys = ON;")
