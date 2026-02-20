@@ -334,7 +334,7 @@ class Film(Tabela, Entiteta):
                                     DEFAULT (0),
                     zasluzek  INTEGER,
                     oznaka    TEXT    REFERENCES oznaka (kratica),
-                    opis      TEXT    NOT NULL
+                    opis      TEXT
                 );
             """)
 
