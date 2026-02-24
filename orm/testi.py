@@ -1,8 +1,12 @@
 from model import Uporabnik, Oznaka, Film, Oseba, Zanr, Vloga, Pripada
 from model import pobrisi_tabele, ustvari_bazo
+from model import conn
 
 pobrisi_tabele()
 ustvari_bazo()
+
+# Izpisovanje poizvedb
+conn.set_trace_callback(print)
 
 micka = Uporabnik(uporabnisko_ime='micka')
 micka.dodaj('geselce')

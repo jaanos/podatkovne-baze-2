@@ -12,12 +12,22 @@ TIPI = {
     int: 'INTEGER',
     str: 'TEXT',
     bool: 'INTEGER',
+    float: 'REAL',
     bytes: 'BLOB'
 }
 
 
-def polje(privzeto=None):
-    return field(default=privzeto)
+def polje(kljuc=None, samodejno=None, enolicno=False, obvezno=True, privzeto=None):
+    """
+    Funkcija, ki vrne polje za dataclass.
+    """
+    return field(default=privzeto,
+                 metadata=dict(
+                     kljuc=kljuc,
+                     samodejno=samodejno,
+                     enolicno=enolicno,
+                     obvezno=obvezno,
+                    ))
 
 
 class Kazalec:
@@ -63,7 +73,7 @@ class Tabela:
 
     TABELE = []
 
-    def __init_subclass__(cls, /, dodaj=False, **kwargs):
+    def __init_subclass__(cls, /, dodaj=False, enolicnost=[], **kwargs):
         """
         Inicializacija podrazreda.
 
@@ -72,6 +82,7 @@ class Tabela:
         super().__init_subclass__(**kwargs)
         if dodaj:
             cls.TABELE.append(cls)
+            cls.ENOLICNOST = enolicnost
             dataclass(cls)
             dataclass_json(cls)
 
@@ -95,6 +106,49 @@ class Tabela:
             for vrstica in rd:
                 yield dict(zip(stolpci, vrstica))
 
+    @classmethod
+    def _ime_tabele(cls):
+        """
+        Vrni ime tabele.
+        """
+        return cls.__name__.lower()
+
+    @staticmethod
+    def _tip(f):
+        if issubclass(f.type, Entiteta):
+            return f.type._tip(f.type.KLJUC)
+        else:
+            return TIPI[f.type]
+
+    @classmethod
+    def ustvari_tabelo(cls, cur=None):
+        """
+        Ustvari tabelo.
+        """
+        stolpci = ', '.join(f"""
+                {f.name} {cls._tip(f)}
+                {'UNIQUE' if f.metadata['enolicno'] else ''}
+                {'NOT NULL' if f.metadata['obvezno'] else ''}
+                {f'DEFAULT ({f.default})' if f.default is not None else ''}
+                {f'''
+                    REFERENCES {f.type._ime_tabele()}
+                    ({', '.join(k.name for k in f.type._kljuc())})
+                  ''' if issubclass(f.type, Entiteta) else ''}
+            """ for f in fields(cls))
+        kljuc = ', '.join(f.name for f in cls._kljuc())
+        #privzeto = [f.default for f in fields(cls) if f.default is not None]
+        #print(privzeto)
+        enolicnost = ', '.join((f'PRIMARY KEY ({kljuc})', *(
+            f'UNIQUE ({', '.join(u)})' for u in cls.ENOLICNOST
+        )))
+        sql = f"""
+                CREATE TABLE {cls._ime_tabele()} (
+                    {stolpci},
+                    {enolicnost}
+                );
+            """
+        with Kazalec(cur) as cur:
+            cur.execute(sql) #, privzeto)
 
 class Entiteta(Tabela):
     """
@@ -114,34 +168,22 @@ class Entiteta(Tabela):
             else f"<entiteta tipa {self.__class__}>"
 
 
-    def __init_subclass__(cls, /, **kwargs):
+    def __init_subclass__(cls, /, kljuc='id', **kwargs):
         """
         Inicializacija podrazreda.
 
         Pripravi prazen objekt.
         """
         super().__init_subclass__(dodaj=True, **kwargs)
+        for f in fields(cls):
+            if f.name == kljuc:
+                cls.KLJUC = f
         cls.NULL = cls()
 
     @classmethod
-    def _ime_tabele(cls):
-        """
-        Vrni ime tabele.
-        """
-        return cls.__name__.lower()
+    def _kljuc(cls):
+        yield cls.KLJUC
 
-    @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo.
-        """
-        stolpci = ', '.join(f'{f.name} {TIPI[f.type]}' for f in fields(cls))
-        with Kazalec(cur) as cur:
-            cur.execute(f"""
-                CREATE TABLE {cls._ime_tabele()} (
-                    {stolpci}
-                );
-            """)
 
 class Odnos(Tabela):
     def __init_subclass__(cls, /, **kwargs):
@@ -149,6 +191,13 @@ class Odnos(Tabela):
         Inicializacija podrazreda.
         """
         super().__init_subclass__(dodaj=True, **kwargs)
+
+    @classmethod
+    def _kljuc(cls):
+        for f in fields(cls):
+            if f.metadata['kljuc'] or \
+                    (f.metadata['kljuc'] is None and issubclass(f.type, Entiteta)):
+                yield f
 
 
 def ustvari_tabele(cur=None):

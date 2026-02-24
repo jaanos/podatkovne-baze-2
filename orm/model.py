@@ -18,27 +18,12 @@ class Uporabnik(Entiteta):
     Razred za uporabnika.
     """
     id: int = polje()
-    uporabnisko_ime: str = polje()
-    admin: bool = polje(privzeto=False)
-    geslo: bytes = polje()
+    uporabnisko_ime: str = polje(enolicno=True)
+    admin: bool = polje(privzeto=0)
+    geslo: bytes = polje(obvezno=False)
 
     IME = 'uporabnisko_ime'
     VIR = 'uporabnik.csv'
-
-    @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo "uporabnik".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                CREATE TABLE uporabnik (
-                    id              INTEGER PRIMARY KEY,
-                    uporabnisko_ime TEXT    UNIQUE NOT NULL,
-                    admin           INTEGER NOT NULL DEFAULT 0,
-                    geslo           BLOB
-                );
-            """)
 
     @classmethod
     def pobrisi_tabelo(cls, cur=None):
@@ -146,7 +131,7 @@ class Uporabnik(Entiteta):
                 cur.execute(sql, [zgostitev, self.id])
 
 
-class Oznaka(Entiteta):
+class Oznaka(Entiteta, kljuc='kratica'):
     """
     Razred za oznako filma.
     """
@@ -154,18 +139,6 @@ class Oznaka(Entiteta):
     kratica: str = polje()
 
     IME = 'kratica'
-
-    @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo "oznaka".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                CREATE TABLE oznaka (
-                    kratica TEXT PRIMARY KEY
-                );
-            """)
 
     @classmethod
     def pobrisi_tabelo(cls, cur=None):
@@ -197,37 +170,14 @@ class Film(Entiteta):
     dolzina: int = polje()
     leto: int = polje()
     ocena: float = polje()
-    metascore: int = polje()
+    metascore: int = polje(obvezno=False)
     glasovi: int = polje(privzeto=0)
-    zasluzek: int = polje()
-    oznaka: Oznaka = polje()
-    opis: str = polje()
+    zasluzek: int = polje(obvezno=False)
+    oznaka: Oznaka = polje(obvezno=False)
+    opis: str = polje(obvezno=False)
 
     VIR = "film.csv"
     IME = 'naslov'
-
-    @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo "film".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                CREATE TABLE film (
-                    id        INTEGER PRIMARY KEY,
-                    naslov    TEXT    NOT NULL,
-                    dolzina   INTEGER NOT NULL,
-                    leto      INTEGER NOT NULL,
-                    ocena     REAL    NOT NULL,
-                    metascore INTEGER,
-                    glasovi   INTEGER NOT NULL
-                                    CHECK (glasovi >= 0) 
-                                    DEFAULT (0),
-                    zasluzek  INTEGER,
-                    oznaka    TEXT    REFERENCES oznaka (kratica),
-                    opis      TEXT
-                );
-            """)
 
     @classmethod
     def pobrisi_tabelo(cls, cur=None):
@@ -385,19 +335,6 @@ class Oseba(Entiteta):
     IME = 'ime'
 
     @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo "oseba".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                CREATE TABLE oseba (
-                    id  INTEGER PRIMARY KEY,
-                    ime TEXT    NOT NULL
-                );
-            """)
-
-    @classmethod
     def pobrisi_tabelo(cls, cur=None):
         """
         Pobriši tabelo "oseba".
@@ -472,22 +409,9 @@ class Zanr(Entiteta):
     """
 
     id: int = polje()
-    naziv: str = polje()
+    naziv: str = polje(enolicno=True)
 
     IME = 'naziv'
-
-    @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo "zanr".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                CREATE TABLE zanr (
-                    id    INTEGER PRIMARY KEY AUTOINCREMENT,
-                    naziv TEXT    NOT NULL UNIQUE
-                );
-            """)
 
     @classmethod
     def pobrisi_tabelo(cls, cur=None):
@@ -500,15 +424,15 @@ class Zanr(Entiteta):
             """)
 
 
-class Vloga(Odnos):
+class Vloga(Odnos, enolicnost=[('film', 'tip', 'mesto')]):
     """
     Razred za vlogo.
     """
 
-    film: Film
-    oseba: Oseba
-    tip: str
-    mesto: int
+    film: Film = polje()
+    oseba: Oseba = polje()
+    tip: str = polje(kljuc=True)
+    mesto: int = polje()
 
     VIR = "vloga.csv"
     VLOGE = {'I': 'igralec', 'R': 'režiser'}
@@ -518,24 +442,6 @@ class Vloga(Odnos):
         Znakovna predstavitev vloge.
         """
         return f"{self.oseba}: {self.tip_vloge} {self.mesto} v filmu {self.film}"
-
-    @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo "vloga".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                CREATE TABLE vloga (
-                    film  INTEGER   REFERENCES film (id),
-                    oseba INTEGER   REFERENCES oseba (id),
-                    tip   CHARACTER CHECK (tip IN ('I', 'R') ),
-                    mesto INTEGER   CHECK (mesto >= 1) 
-                                    NOT NULL,
-                    PRIMARY KEY (film, oseba, tip),
-                    UNIQUE (film, tip, mesto)
-                );
-            """)
 
     @classmethod
     def pobrisi_tabelo(cls, cur=None):
@@ -568,8 +474,8 @@ class Pripada(Odnos):
     Razred za pripadnost filma žanru.
     """
 
-    film: Film
-    zanr: Zanr
+    film: Film = polje()
+    zanr: Zanr = polje()
 
     VIR = "zanr.csv"
 
@@ -578,20 +484,6 @@ class Pripada(Odnos):
         Znakovna predstavitev pripadnosti.
         """
         return f"{self.film} pripada žanru {self.zanr}"
-
-    @classmethod
-    def ustvari_tabelo(cls, cur=None):
-        """
-        Ustvari tabelo "pripada".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                CREATE TABLE pripada (
-                    film INTEGER REFERENCES film (id) ON DELETE CASCADE,
-                    zanr INTEGER REFERENCES zanr (id) ON UPDATE CASCADE,
-                    PRIMARY KEY (film, zanr)
-                );
-            """)
 
     @classmethod
     def pobrisi_tabelo(cls, cur=None):
