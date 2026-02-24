@@ -150,6 +150,16 @@ class Tabela:
         with Kazalec(cur) as cur:
             cur.execute(sql) #, privzeto)
 
+    @classmethod
+    def pobrisi_tabelo(cls, cur=None):
+        """
+        Pobriši tabelo.
+        """
+        with Kazalec(cur) as cur:
+            cur.execute(f"""
+                DROP TABLE IF EXISTS {cls._ime_tabele()};
+            """)
+
 class Entiteta(Tabela):
     """
     Nadrazred za posamezne entitetne tipe.

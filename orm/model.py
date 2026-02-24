@@ -26,16 +26,6 @@ class Uporabnik(Entiteta):
     VIR = 'uporabnik.csv'
 
     @classmethod
-    def pobrisi_tabelo(cls, cur=None):
-        """
-        Pobriši tabelo "uporabnik".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS uporabnik;
-            """)
-
-    @classmethod
     def uvozi_podatke(cls, cur=None):
         """
         Uvozi podatke v tabelo "uporabnik".
@@ -140,16 +130,6 @@ class Oznaka(Entiteta, kljuc='kratica'):
 
     IME = 'kratica'
 
-    @classmethod
-    def pobrisi_tabelo(cls, cur=None):
-        """
-        Pobriši tabelo "oznaka".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS oznaka;
-            """)
-
     @staticmethod
     def seznam():
         sql = """
@@ -178,16 +158,6 @@ class Film(Entiteta):
 
     VIR = "film.csv"
     IME = 'naslov'
-
-    @classmethod
-    def pobrisi_tabelo(cls, cur=None):
-        """
-        Pobriši tabelo "film".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS film;
-            """)
 
     @classmethod
     def uvozi_podatke(cls, cur=None):
@@ -335,16 +305,6 @@ class Oseba(Entiteta):
     IME = 'ime'
 
     @classmethod
-    def pobrisi_tabelo(cls, cur=None):
-        """
-        Pobriši tabelo "oseba".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS oseba;
-            """)
-
-    @classmethod
     def uvozi_podatke(cls, cur=None):
         """
         Uvozi podatke v tabelo "oseba".
@@ -413,16 +373,6 @@ class Zanr(Entiteta):
 
     IME = 'naziv'
 
-    @classmethod
-    def pobrisi_tabelo(cls, cur=None):
-        """
-        Pobriši tabelo "zanr".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS zanr;
-            """)
-
 
 class Vloga(Odnos, enolicnost=[('film', 'tip', 'mesto')]):
     """
@@ -442,16 +392,6 @@ class Vloga(Odnos, enolicnost=[('film', 'tip', 'mesto')]):
         Znakovna predstavitev vloge.
         """
         return f"{self.oseba}: {self.tip_vloge} {self.mesto} v filmu {self.film}"
-
-    @classmethod
-    def pobrisi_tabelo(cls, cur=None):
-        """
-        Pobriši tabelo "vloga".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS vloga;
-            """)
 
     @classmethod
     def uvozi_podatke(cls, cur=None):
@@ -484,16 +424,6 @@ class Pripada(Odnos):
         Znakovna predstavitev pripadnosti.
         """
         return f"{self.film} pripada žanru {self.zanr}"
-
-    @classmethod
-    def pobrisi_tabelo(cls, cur=None):
-        """
-        Pobriši tabelo "pripada".
-        """
-        with Kazalec(cur) as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS pripada;
-            """)
 
     @classmethod
     def uvozi_podatke(cls, cur=None):
