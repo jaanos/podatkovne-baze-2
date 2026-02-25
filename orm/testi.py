@@ -18,10 +18,14 @@ assert len(list(Oznaka.seznam())) == 11
 pb2 = Film(naslov='Podatkovne baze 2', dolzina=100, leto=2026, ocena=10)
 pb2.dodaj()
 assert pb2.id == 10324145
+assert len(list(Film.najboljsi_v_letu(2026))) == 1
 
 pb2.opis = 'Zelo zanimiv film!'
 pb2.posodobi()
 assert Film.z_id(pb2.id).opis == pb2.opis
+
+pb2.izbrisi()
+assert len(list(Film.najboljsi_v_letu(2026))) == 0
 
 naj2008, = Film.najboljsi_v_letu(2008, 1)
 assert len(list(naj2008.zasedba())) == 5

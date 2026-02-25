@@ -115,6 +115,9 @@ class Tabela:
 
     @staticmethod
     def _tip(f):
+        """
+        Vrni tip podanega polja.
+        """
         if issubclass(f.type, Entiteta):
             return f.type._tip(f.type.KLJUC)
         else:
@@ -160,6 +163,62 @@ class Tabela:
                 DROP TABLE IF EXISTS {cls._ime_tabele()};
             """)
 
+    def dodaj(self):
+        """
+        Dodaj objekt v bazo.
+        """
+        assert self._v_bazi(False), "Objekt je že v bazi"
+        stolpci = [f.name for f in fields(self) if not f.metadata['samodejno']]
+        sql = f"""
+            INSERT INTO {self._ime_tabele()} ({', '.join(stolpci)})
+            VALUES ({', '.join(f':{stolpec}' for stolpec in stolpci)});
+        """
+        try:
+            with Kazalec() as cur:
+                with conn:
+                    cur.execute(sql,
+                                {stolpec: getattr(self, stolpec)
+                                 for stolpec in stolpci})
+                    self._nastavi_kljuc(cur.lastrowid)
+        except dbapi.IntegrityError:
+            raise ValueError("Dodajanje objekta ni bilo uspešno!")
+
+    def posodobi(self):
+        """
+        Posodobi objekt v bazi.
+        """
+        assert self._v_bazi(True), "Objekta še ni v bazi"
+        sql = f"""
+            UPDATE {self._ime_tabele()}
+            SET {', '.join(f'{f.name} = :{f.name}' for f in fields(self))}
+            WHERE {' AND '.join(f'{f.name} = :{f.name}' for f in self._kljuc())};
+        """
+        try:
+            with Kazalec() as cur:
+                with conn:
+                    cur.execute(sql, {f.name: getattr(self, f.name)
+                                      for f in fields(self)})
+        except dbapi.IntegrityError:
+            raise ValueError("Posodabljanje objekta ni bilo uspešno!")
+
+    def izbrisi(self):
+        """
+        Izbriši objekt iz baze.
+        """
+        assert self._v_bazi(True), "Objekta še ni v bazi"
+        sql = f"""
+            DELETE FROM {self._ime_tabele()}
+            WHERE {' AND '.join(f'{f.name} = :{f.name}' for f in self._kljuc())};
+        """
+        try:
+            with Kazalec() as cur:
+                with conn:
+                    cur.execute(sql, {f.name: getattr(self, f.name) for f in self._kljuc()})
+                    self._nastavi_kljuc(None)
+        except dbapi.IntegrityError:
+            raise ValueError("Brisanje filma ni bilo uspešno!")
+
+
 class Entiteta(Tabela):
     """
     Nadrazred za posamezne entitetne tipe.
@@ -177,7 +236,6 @@ class Entiteta(Tabela):
         return getattr(self, self.IME) if self \
             else f"<entiteta tipa {self.__class__}>"
 
-
     def __init_subclass__(cls, /, kljuc='id', **kwargs):
         """
         Inicializacija podrazreda.
@@ -192,7 +250,28 @@ class Entiteta(Tabela):
 
     @classmethod
     def _kljuc(cls):
+        """
+        Vračaj stolpce, ki sestavljajo ključ.
+
+        Pri entitetah ključ sestoji iz enega stolpca.
+        """
         yield cls.KLJUC
+
+    def _v_bazi(self, v_bazi):
+        """
+        Vrni, ali je objekt (potencialno) že v bazi.
+
+        Če ključ ni samodejno generiran, vedno vrne True.
+        """
+        return not self.KLJUC.metadata['samodejno'] or \
+            (getattr(self, self.KLJUC.name) is not None) == v_bazi
+
+    def _nastavi_kljuc(self, vrednost):
+        """
+        Nastavi samodejno generirani ključ na podano vrednost.
+        """
+        if self.KLJUC.metadata['samodejno']:
+            setattr(self, self.KLJUC.name, vrednost)
 
 
 class Odnos(Tabela):
@@ -204,11 +283,29 @@ class Odnos(Tabela):
 
     @classmethod
     def _kljuc(cls):
+        """
+        Vračaj stolpce, ki sestavljajo ključ.
+        """
         for f in fields(cls):
             if f.metadata['kljuc'] or \
                     (f.metadata['kljuc'] is None and issubclass(f.type, Entiteta)):
                 yield f
 
+    def _v_bazi(self, v_bazi):
+        """
+        Vrni, ali je objekt (potencialno) že v bazi.
+
+        Vedno vrne True.
+        """
+        return True
+
+    def _nastavi_kljuc(self, cur):
+        """
+        Nastavi samodejno generirano vrednost ključa.
+
+        Ključ ni samodejno generiran, tako da se ne zgodi nič.
+        """
+        pass
 
 def ustvari_tabele(cur=None):
     """
