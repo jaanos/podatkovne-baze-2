@@ -216,7 +216,7 @@ class Tabela:
                     cur.execute(sql, {f.name: getattr(self, f.name) for f in self._kljuc()})
                     self._nastavi_kljuc(None)
         except dbapi.IntegrityError:
-            raise ValueError("Brisanje filma ni bilo uspešno!")
+            raise ValueError("Brisanje objekta ni bilo uspešno!")
 
 
 class Entiteta(Tabela):
