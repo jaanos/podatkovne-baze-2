@@ -13,7 +13,7 @@ from orm import polje, pobrisi_tabele, ustvari_bazo
 from orm import conn, Kazalec
 from orm import dbapi
 
-class Uporabnik(Entiteta):
+class Uporabnik(Entiteta, vir='uporabnik.csv'):
     """
     Razred za uporabnika.
     """
@@ -23,23 +23,17 @@ class Uporabnik(Entiteta):
     geslo: bytes = polje(obvezno=False, shrani=False)
 
     IME = 'uporabnisko_ime'
-    VIR = 'uporabnik.csv'
 
     @classmethod
-    def uvozi_podatke(cls, cur=None):
+    def _obdelaj_podatek(cls, vrstica):
         """
-        Uvozi podatke v tabelo "uporabnik".
+        Obdelaj podatek pred uvozom.
         """
-        with Kazalec(cur) as cur:
-            for vrstica in cls.preberi_vir():
-                if vrstica["geslo"]:
-                    vrstica["geslo"] = cls.zgostitev(vrstica["geslo"])
-                else:
-                    vrstica["geslo"] = None
-                cur.execute("""
-                    INSERT INTO uporabnik (uporabnisko_ime, admin, geslo)
-                    VALUES (:uporabnisko_ime, :admin, :geslo);
-                """, vrstica)
+        if vrstica["geslo"]:
+            vrstica["geslo"] = cls.zgostitev(vrstica["geslo"])
+        else:
+            vrstica["geslo"] = None
+        return vrstica
 
     @staticmethod
     def prijavi(uporabnisko_ime, geslo):
@@ -68,16 +62,10 @@ class Uporabnik(Entiteta):
         Vrni uporabnika z navedenim ID-jem.
         Če takega uporabnika ni, vrni neprijavljenega uporabnika.
         """
-        sql = """
-          SELECT id, uporabnisko_ime, admin
-            FROM uporabnik WHERE id = ?;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [idu])
-            vrstica = cur.fetchone()
-            if vrstica is None:
-                return cls.NULL
-            return cls(*vrstica)
+        try:
+            return super().z_id(idu)
+        except ValueError:
+            return cls.NULL
 
     @staticmethod
     def zgostitev(geslo):
@@ -129,7 +117,7 @@ class Oznaka(Entiteta, kljuc='kratica'):
             cur.execute(sql)
             yield from (Oznaka(kratica) for kratica, in cur)
 
-class Film(Entiteta):
+class Film(Entiteta, vir='film.csv'):
     """
     Razred za film.
     """
@@ -145,51 +133,21 @@ class Film(Entiteta):
     oznaka: Oznaka = polje(obvezno=False)
     opis: str = polje(obvezno=False)
 
-    VIR = "film.csv"
     IME = 'naslov'
 
     @classmethod
-    def uvozi_podatke(cls, cur=None):
+    def _obdelaj_podatek(cls, vrstica):
         """
-        Uvozi podatke v tabeli "film" in "oznaka".
+        Obdelaj podatek pred uvozom.
         """
-        with Kazalec(cur) as cur:
-            for vrstica in cls.preberi_vir():
-                if vrstica['oznaka']:
-                    cur.execute("""
-                        SELECT kratica FROM oznaka
-                        WHERE kratica = :oznaka;
-                    """, vrstica)
-                    if not cur.fetchone():
-                        cur.execute("""
-                            INSERT INTO oznaka (kratica) VALUES (:oznaka);
-                        """, vrstica)
-                else:
-                    vrstica['oznaka'] = None
-                cur.execute("""
-                    INSERT INTO film (id, naslov, dolzina, leto, ocena,
-                                    metascore, glasovi, zasluzek, oznaka, opis)
-                    VALUES (:id, :naslov, :dolzina, :leto, :ocena,
-                            :metascore, :glasovi, :zasluzek, :oznaka, :opis);
-                """, vrstica)
-
-    @classmethod
-    def z_id(cls, idf):
-        """
-        Vrni film z navedenim ID-jem.
-        Če takega filma ni, sproži napako.
-        """
-        sql = """
-          SELECT id, naslov, dolzina, leto, ocena,
-                 metascore, glasovi, zasluzek, oznaka, opis
-            FROM film WHERE id = ?;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [idf])
-            vrstica = cur.fetchone()
-            if vrstica is None:
-                raise ValueError(f"Film z ID-jem {idf} ne obstaja!")
-            return Film(*vrstica)
+        if vrstica['oznaka']:
+            try:
+                Oznaka.z_id(vrstica['oznaka'])
+            except ValueError:
+                Oznaka(vrstica['oznaka']).dodaj()
+        else:
+            vrstica['oznaka'] = None
+        return vrstica
 
     @staticmethod
     def najboljsi_v_letu(leto, n=10):
@@ -226,43 +184,14 @@ class Film(Entiteta):
             yield from (Vloga(self, Oseba(oid, ime), tip, mesto)
                         for oid, ime, tip, mesto in cur)
 
-class Oseba(Entiteta):
+class Oseba(Entiteta, vir='oseba.csv'):
     """
     Razred za osebo.
     """
     id: int = polje(samodejno=True)
     ime: str = polje()
 
-    VIR = "oseba.csv"
     IME = 'ime'
-
-    @classmethod
-    def uvozi_podatke(cls, cur=None):
-        """
-        Uvozi podatke v tabelo "oseba".
-        """
-        with Kazalec(cur) as cur:
-            cur.executemany("""
-                INSERT INTO oseba (id, ime)
-                VALUES (:id, :ime);
-            """, cls.preberi_vir())
-
-    @classmethod
-    def z_id(cls, ido):
-        """
-        Vrni oseob z navedenim ID-jem.
-        Če take osebe ni, sproži napako.
-        """
-        sql = """
-          SELECT id, ime
-            FROM oseba WHERE id = ?;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [ido])
-            vrstica = cur.fetchone()
-            if vrstica is None:
-                raise ValueError(f"Oseba z ID-jem {ido} ne obstaja!")
-            return Oseba(*vrstica)
 
     def poisci_vloge(self):
         """
@@ -306,7 +235,7 @@ class Zanr(Entiteta):
     IME = 'naziv'
 
 
-class Vloga(Odnos, enolicnost=[('film', 'tip', 'mesto')]):
+class Vloga(Odnos, vir='vloga.csv', enolicnost=[('film', 'tip', 'mesto')]):
     """
     Razred za vlogo.
     """
@@ -316,7 +245,6 @@ class Vloga(Odnos, enolicnost=[('film', 'tip', 'mesto')]):
     tip: str = polje(kljuc=True)
     mesto: int = polje()
 
-    VIR = "vloga.csv"
     VLOGE = {'I': 'igralec', 'R': 'režiser'}
 
     def __str__(self):
@@ -325,31 +253,18 @@ class Vloga(Odnos, enolicnost=[('film', 'tip', 'mesto')]):
         """
         return f"{self.oseba}: {self.tip_vloge} {self.mesto} v filmu {self.film}"
 
-    @classmethod
-    def uvozi_podatke(cls, cur=None):
-        """
-        Uvozi podatke v tabelo "vloga".
-        """
-        with Kazalec(cur) as cur:
-            cur.executemany("""
-                INSERT INTO vloga (film, oseba, tip, mesto)
-                VALUES (:film, :oseba, :tip, :mesto);
-            """, cls.preberi_vir())
-
     @property
     def tip_vloge(self):
         return self.VLOGE[self.tip]
 
 
-class Pripada(Odnos):
+class Pripada(Odnos, vir='zanr.csv'):
     """
     Razred za pripadnost filma žanru.
     """
 
     film: Film = polje()
     zanr: Zanr = polje()
-
-    VIR = "zanr.csv"
 
     def __str__(self):
         """
@@ -358,25 +273,16 @@ class Pripada(Odnos):
         return f"{self.film} pripada žanru {self.zanr}"
 
     @classmethod
-    def uvozi_podatke(cls, cur=None):
+    def _obdelaj_podatek(cls, vrstica):
         """
-        Uvozi podatke v tabeli "pripada" in "zanr".
+        Obdelaj podatek pred uvozom.
         """
-        with Kazalec(cur) as cur:
-            for vrstica in cls.preberi_vir():
-                cur.execute("""
-                    SELECT id FROM zanr
-                    WHERE naziv = :naziv;
-                """, vrstica)
-                rezultat = cur.fetchone()
-                if rezultat:
-                    vrstica["zanr"], = rezultat
-                else:
-                    cur.execute("""
-                        INSERT INTO zanr (naziv) VALUES (:naziv);
-                    """, vrstica)
-                    vrstica["zanr"] = cur.lastrowid
-                cur.execute("""
-                    INSERT INTO pripada (film, zanr)
-                    VALUES (:film, :zanr);
-                """, vrstica)
+        try:
+            zanr, = Zanr.poisci(naziv=vrstica['naziv'])
+        except ValueError:
+            zanr = Zanr(naziv=vrstica['naziv'])
+            zanr.dodaj()
+        vrstica['zanr'] = zanr.id
+        del vrstica['naziv']
+        return vrstica
+

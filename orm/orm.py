@@ -74,7 +74,7 @@ class Tabela:
 
     TABELE = []
 
-    def __init_subclass__(cls, /, dodaj=False, enolicnost=[], **kwargs):
+    def __init_subclass__(cls, /, dodaj=False, vir=None, enolicnost=[], **kwargs):
         """
         Inicializacija podrazreda.
 
@@ -83,18 +83,10 @@ class Tabela:
         super().__init_subclass__(**kwargs)
         if dodaj:
             cls.TABELE.append(cls)
+            cls.VIR = vir
             cls.ENOLICNOST = enolicnost
             dataclass(cls)
             dataclass_json(cls)
-
-    @classmethod
-    def uvozi_podatke(cls, cur=None):
-        """
-        Uvozi podatke v tabelo.
-
-        Privzeto ne naredi ničesar, podrazredi naj povozijo definicijo.
-        """
-        pass
 
     @classmethod
     def preberi_vir(cls):
@@ -225,6 +217,43 @@ class Tabela:
         except dbapi.IntegrityError:
             raise ValueError("Brisanje objekta ni bilo uspešno!")
 
+    @classmethod
+    def _obdelaj_podatek(cls, vrstica):
+        """
+        Obdelaj podatek pred uvozom.
+        """
+        return vrstica
+
+    @classmethod
+    def uvozi_podatke(cls, cur=None):
+        """
+        Uvozi podatke v tabelo.
+        """
+        if not cls.VIR:
+            return
+        with Kazalec(cur) as cur:
+            for vrstica in cls.preberi_vir():
+                vrstica = cls._obdelaj_podatek(vrstica)
+                cur.execute(f"""
+                    INSERT INTO {cls._ime_tabele()} ({', '.join(vrstica)})
+                    VALUES ({', '.join(f':{stolpec}' for stolpec in vrstica)});
+                """, vrstica)
+
+    @classmethod
+    def poisci(cls, /, **kwargs):
+        """
+        Vrni objekt z navedenim ključem.
+        Če takega objekta ni, sproži napako.
+        """
+        stolpci = [f.name for f in fields(cls) if f.metadata['shrani']]
+        sql = f"""
+          SELECT {', '.join(stolpci)}
+            FROM {cls._ime_tabele()}
+           WHERE {' AND '.join(f'{stolpec} = :{stolpec}' for stolpec in kwargs)};
+        """
+        with Kazalec() as cur:
+            cur.execute(sql, kwargs)
+            yield from (cls(**dict(zip(stolpci, vrstica))) for vrstica in cur)
 
 class Entiteta(Tabela):
     """
@@ -279,6 +308,24 @@ class Entiteta(Tabela):
         """
         if self.KLJUC.metadata['samodejno']:
             setattr(self, self.KLJUC.name, vrednost)
+
+    @classmethod
+    def z_id(cls, kljuc):
+        """
+        Vrni objekt z navedenim ključem.
+        Če takega objekta ni, sproži napako.
+        """
+        stolpci = [f.name for f in fields(cls) if f.metadata['shrani']]
+        sql = f"""
+          SELECT {', '.join(stolpci)}
+            FROM {cls._ime_tabele()} WHERE {cls.KLJUC.name} = ?;
+        """
+        with Kazalec() as cur:
+            cur.execute(sql, [kljuc])
+            vrstica = cur.fetchone()
+            if vrstica is None:
+                raise ValueError(f"Objekt s ključem {kljuc} ne obstaja!")
+            return cls(**dict(zip(stolpci, vrstica)))
 
 
 class Odnos(Tabela):
