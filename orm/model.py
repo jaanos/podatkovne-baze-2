@@ -75,13 +75,13 @@ class Uporabnik(Entiteta, vir='uporabnik.csv'):
         sol = bcrypt.gensalt()
         return bcrypt.hashpw(geslo.encode("utf-8"), sol)
 
-    def dodaj(self, geslo):
+    def dodaj(self, geslo, transakcija=True):
         """
         Dodaj uporabnika v bazo z navedenim geslom.
         """
         assert self.uporabnisko_ime, "Uporabniško ime ni določeno!"
         zgostitev = self.zgostitev(geslo)
-        super().dodaj(geslo=zgostitev)
+        super().dodaj(transakcija, geslo=zgostitev)
 
     def spremeni_geslo(self, geslo):
         """
@@ -144,7 +144,7 @@ class Film(Entiteta, vir='film.csv'):
             try:
                 Oznaka.z_id(vrstica['oznaka'])
             except ValueError:
-                Oznaka(vrstica['oznaka']).dodaj()
+                Oznaka(vrstica['oznaka']).dodaj(False)
         else:
             vrstica['oznaka'] = None
         return vrstica
@@ -281,7 +281,7 @@ class Pripada(Odnos, vir='zanr.csv'):
             zanr, = Zanr.poisci(naziv=vrstica['naziv'])
         except ValueError:
             zanr = Zanr(naziv=vrstica['naziv'])
-            zanr.dodaj()
+            zanr.dodaj(False)
         vrstica['zanr'] = zanr.id
         del vrstica['naziv']
         return vrstica

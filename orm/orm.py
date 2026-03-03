@@ -67,6 +67,34 @@ class Kazalec:
             self.cur.close()
 
 
+class Transakcija:
+    """
+    Upravitelj konteksta za transakcije.
+    """
+
+    def __init__(self, transakcija=True):
+        """
+        Konstruktor upravitelja konteksta.
+
+        Zabeleži, ali naj se po koncu izvajanja zaključi transakcija.
+        """
+        self.transakcija = transakcija
+
+    def __enter__(self):
+        """
+        Vstop v kontekst z `with`.
+        """
+        if self.transakcija:
+            return conn.__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Izstop iz konteksta.
+        """
+        if self.transakcija:
+            conn.__exit__(exc_type, exc_value, traceback)
+
+
 class Tabela:
     """
     Nadrazred za tabele.
@@ -156,7 +184,7 @@ class Tabela:
                 DROP TABLE IF EXISTS {cls._ime_tabele()};
             """)
 
-    def dodaj(self, /, **kwargs):
+    def dodaj(self, transakcija=True, /, **kwargs):
         """
         Dodaj objekt v bazo.
         """
@@ -170,7 +198,7 @@ class Tabela:
         """
         try:
             with Kazalec() as cur:
-                with conn:
+                with Transakcija(transakcija):
                     cur.execute(sql,
                                 {**{stolpec: getattr(self, stolpec)
                                     for stolpec in stolpci},
@@ -179,7 +207,7 @@ class Tabela:
         except dbapi.IntegrityError:
             raise ValueError("Dodajanje objekta ni bilo uspešno!")
 
-    def posodobi(self, /, **kwargs):
+    def posodobi(self, transakcija=True, /, **kwargs):
         """
         Posodobi objekt v bazi.
         """
@@ -193,14 +221,14 @@ class Tabela:
         """
         try:
             with Kazalec() as cur:
-                with conn:
+                with Transakcija(transakcija):
                     cur.execute(sql, {**{stolpec: getattr(self, stolpec)
                                          for stolpec in stolpci},
                                       **kwargs})
         except dbapi.IntegrityError:
             raise ValueError("Posodabljanje objekta ni bilo uspešno!")
 
-    def izbrisi(self):
+    def izbrisi(self, transakcija=True):
         """
         Izbriši objekt iz baze.
         """
@@ -211,7 +239,7 @@ class Tabela:
         """
         try:
             with Kazalec() as cur:
-                with conn:
+                with Transakcija(transakcija):
                     cur.execute(sql, {f.name: getattr(self, f.name) for f in self._kljuc()})
                     self._nastavi_kljuc(None)
         except dbapi.IntegrityError:
@@ -394,7 +422,7 @@ def ustvari_bazo(pobrisi=False, cur=None):
     """
     with Kazalec(cur) as cur:
         try:
-            with conn:
+            with Transakcija():
                 cur.execute("PRAGMA foreign_keys = OFF;")
                 if pobrisi:
                     pobrisi_tabele(cur=cur)
