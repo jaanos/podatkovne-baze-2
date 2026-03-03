@@ -17,7 +17,7 @@ TIPI = {
 }
 
 
-def polje(kljuc=None, samodejno=None, enolicno=False, obvezno=True, privzeto=None):
+def polje(kljuc=None, samodejno=None, enolicno=False, obvezno=True, shrani=True, privzeto=None):
     """
     Funkcija, ki vrne polje za dataclass.
     """
@@ -27,6 +27,7 @@ def polje(kljuc=None, samodejno=None, enolicno=False, obvezno=True, privzeto=Non
                      samodejno=samodejno,
                      enolicno=enolicno,
                      obvezno=obvezno,
+                     shrani=shrani,
                     ))
 
 
@@ -163,12 +164,14 @@ class Tabela:
                 DROP TABLE IF EXISTS {cls._ime_tabele()};
             """)
 
-    def dodaj(self):
+    def dodaj(self, /, **kwargs):
         """
         Dodaj objekt v bazo.
         """
         assert self._v_bazi(False), "Objekt je že v bazi"
-        stolpci = [f.name for f in fields(self) if not f.metadata['samodejno']]
+        stolpci = [*(f.name for f in fields(self)
+                     if not f.metadata['samodejno'] and f.metadata['shrani']),
+                   *kwargs]
         sql = f"""
             INSERT INTO {self._ime_tabele()} ({', '.join(stolpci)})
             VALUES ({', '.join(f':{stolpec}' for stolpec in stolpci)});
@@ -177,27 +180,31 @@ class Tabela:
             with Kazalec() as cur:
                 with conn:
                     cur.execute(sql,
-                                {stolpec: getattr(self, stolpec)
-                                 for stolpec in stolpci})
+                                {**{stolpec: getattr(self, stolpec)
+                                    for stolpec in stolpci},
+                                 **kwargs})
                     self._nastavi_kljuc(cur.lastrowid)
         except dbapi.IntegrityError:
             raise ValueError("Dodajanje objekta ni bilo uspešno!")
 
-    def posodobi(self):
+    def posodobi(self, /, **kwargs):
         """
         Posodobi objekt v bazi.
         """
         assert self._v_bazi(True), "Objekta še ni v bazi"
+        stolpci = [*(f.name for f in fields(self) if f.metadata['shrani']),
+                   *kwargs]
         sql = f"""
             UPDATE {self._ime_tabele()}
-            SET {', '.join(f'{f.name} = :{f.name}' for f in fields(self))}
+            SET {', '.join(f'{stolpec} = :{stolpec}' for stolpec in stolpci)}
             WHERE {' AND '.join(f'{f.name} = :{f.name}' for f in self._kljuc())};
         """
         try:
             with Kazalec() as cur:
                 with conn:
-                    cur.execute(sql, {f.name: getattr(self, f.name)
-                                      for f in fields(self)})
+                    cur.execute(sql, {**{stolpec: getattr(self, stolpec)
+                                         for stolpec in stolpci},
+                                      **kwargs})
         except dbapi.IntegrityError:
             raise ValueError("Posodabljanje objekta ni bilo uspešno!")
 

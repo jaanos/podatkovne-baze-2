@@ -20,7 +20,7 @@ class Uporabnik(Entiteta):
     id: int = polje(samodejno=True)
     uporabnisko_ime: str = polje(enolicno=True)
     admin: bool = polje(privzeto=0)
-    geslo: bytes = polje(obvezno=False)
+    geslo: bytes = polje(obvezno=False, shrani=False)
 
     IME = 'uporabnisko_ime'
     VIR = 'uporabnik.csv'
@@ -91,20 +91,9 @@ class Uporabnik(Entiteta):
         """
         Dodaj uporabnika v bazo z navedenim geslom.
         """
-        assert not self.id, "Uporabnik je že vpisan v bazo!"
         assert self.uporabnisko_ime, "Uporabniško ime ni določeno!"
-        sql = """
-          INSERT INTO uporabnik (uporabnisko_ime, geslo, admin)
-          VALUES (?, ?, ?);
-        """
         zgostitev = self.zgostitev(geslo)
-        with Kazalec() as cur:
-            try:
-                with conn:
-                    cur.execute(sql, [self.uporabnisko_ime, zgostitev, self.admin])
-                self.id = cur.lastrowid
-            except dbapi.IntegrityError:
-                raise ValueError("Uporabniško ime že obstaja!")
+        super().dodaj(geslo=zgostitev)
 
     def spremeni_geslo(self, geslo):
         """
