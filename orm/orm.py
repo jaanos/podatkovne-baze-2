@@ -316,13 +316,24 @@ class Tabela:
         return (polja, pridruzitve)
 
     @classmethod
+    def _objekt(cls, slovar, polja, preslikava, predpona=""):
+        """
+        Vrni objekt s podanimi podatki.
+        """
+        tabela = f"{predpona}_"
+        return cls(**{f.name: f.type._objekt(slovar, polja, preslikava, f"{predpona}{f.name}_")
+                      if issubclass(f.type, Entiteta) else slovar[preslikava[tabela, f]]
+                      for f in polja[tabela]})
+
+    @classmethod
     def seznam(cls, /, dodatni_stolpci=(), uredi=None, omejitev=None, **kwargs):
         """
-        Vrni objekt z navedenim ključem.
-        Če takega objekta ni, sproži napako.
+        Vračaj objekte, ki ustrezajo navedenim pogojem.
         """
         polja, join = cls._polja(dodatni_stolpci)
-        stolpci = [f"{tabela}.{f.name}" for tabela, p in polja.items() for f in p]
+        preslikava = {(tabela, f): f"{tabela}.{f.name}"
+                      for tabela, p in polja.items() for f in p}
+        stolpci = list(preslikava.values())
         if kwargs:
             where = f"WHERE {' AND '.join(
                 f'_.{stolpec} LIKE :{stolpec}' if isinstance(kwargs[stolpec], Vzorec)
@@ -352,7 +363,7 @@ class Tabela:
         with Kazalec() as cur:
             cur.execute(sql, {stolpec: str(vrednost) if isinstance(vrednost, Vzorec)
                               else vrednost for stolpec, vrednost in kwargs.items()})
-            yield from (cls(**dict(zip((f.name for f in polja["_"]), vrstica)))
+            yield from (cls._objekt(dict(zip(stolpci, vrstica)), polja, preslikava)
                         for vrstica in cur)
 
 
@@ -416,17 +427,11 @@ class Entiteta(Tabela):
         Vrni objekt z navedenim ključem.
         Če takega objekta ni, sproži napako.
         """
-        stolpci = [f.name for f in fields(cls) if f.metadata['shrani']]
-        sql = f"""
-          SELECT {', '.join(stolpci)}
-            FROM {cls._ime_tabele()} WHERE {cls.KLJUC.name} = ?;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [kljuc])
-            vrstica = cur.fetchone()
-            if vrstica is None:
-                raise ValueError(f"Objekt s ključem {kljuc} ne obstaja!")
-            return cls(**dict(zip(stolpci, vrstica)))
+        try:
+            objekt, = cls.seznam(**{cls.KLJUC.name: kljuc})
+            return objekt
+        except ValueError:
+            raise ValueError(f"Objekt s ključem {kljuc} ne obstaja!")
 
 
 class Odnos(Tabela):
