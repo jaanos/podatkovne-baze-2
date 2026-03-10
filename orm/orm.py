@@ -298,23 +298,41 @@ class Tabela:
                 """, vrstica)
 
     @classmethod
+    def _polja(cls, dodatni_stolpci=()):
+        polja = {"_": [f for f in fields(cls)
+                       if f.metadata['shrani'] or f.name in dodatni_stolpci]}
+        pridruzitve = []
+        for f in polja["_"]:
+            if issubclass(f.type, Entiteta):
+                slovar, join = f.type._polja()
+                polja.update({f"{f.name}_{tabela}": p for tabela, p in slovar.items()})
+                pridruzitve.append((f.type._ime_tabele(), f"{f.name}__",
+                                    f"_.{f.name}", f"{f.name}__.{f.type.KLJUC.name}"))
+                pridruzitve.extend([
+                    (ime_tabele, f"{f.name}_{tabela}", f"{f.name}_{stolpec1}",
+                     f"{f.name}_{stolpec2}")
+                    for ime_tabele, tabela, stolpec1, stolpec2 in join
+                ])
+        return (polja, pridruzitve)
+
+    @classmethod
     def seznam(cls, /, dodatni_stolpci=(), uredi=None, omejitev=None, **kwargs):
         """
         Vrni objekt z navedenim ključem.
         Če takega objekta ni, sproži napako.
         """
-        stolpci = [f.name for f in fields(cls)
-                   if f.metadata['shrani'] or f.name in dodatni_stolpci]
+        polja, join = cls._polja(dodatni_stolpci)
+        stolpci = [f"{tabela}.{f.name}" for tabela, p in polja.items() for f in p]
         if kwargs:
             where = f"WHERE {' AND '.join(
-                f'{stolpec} LIKE :{stolpec}' if isinstance(kwargs[stolpec], Vzorec)
-                else f'{stolpec} = :{stolpec}' for stolpec in kwargs)}"
+                f'_.{stolpec} LIKE :{stolpec}' if isinstance(kwargs[stolpec], Vzorec)
+                else f'_.{stolpec} = :{stolpec}' for stolpec in kwargs)}"
         else:
             where = ""
         if uredi is None:
             uredi = cls.UREDI
         if uredi:
-            orderby = f"ORDER BY {', '.join(str(stolpec) for stolpec in uredi)}"
+            orderby = f"ORDER BY {', '.join(f"_.{stolpec}" for stolpec in uredi)}"
         else:
             orderby = ""
         if omejitev:
@@ -324,7 +342,9 @@ class Tabela:
             limit = ""
         sql = f"""
           SELECT {', '.join(stolpci)}
-            FROM {cls._ime_tabele()}
+            FROM {cls._ime_tabele()} AS _
+           {'\n'.join(f"LEFT JOIN {ime_tabele} AS {tabela} ON {stolpec1} = {stolpec2}"
+                      for ime_tabele, tabela, stolpec1, stolpec2 in join)}
            {where}
            {orderby}
            {limit};
@@ -332,7 +352,8 @@ class Tabela:
         with Kazalec() as cur:
             cur.execute(sql, {stolpec: str(vrednost) if isinstance(vrednost, Vzorec)
                               else vrednost for stolpec, vrednost in kwargs.items()})
-            yield from (cls(**dict(zip(stolpci, vrstica))) for vrstica in cur)
+            yield from (cls(**dict(zip((f.name for f in polja["_"]), vrstica)))
+                        for vrstica in cur)
 
 
 class Entiteta(Tabela):
