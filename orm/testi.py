@@ -12,6 +12,9 @@ micka = Uporabnik(uporabnisko_ime='micka')
 micka.dodaj('geselce')
 assert micka.id == Uporabnik.prijavi('micka', 'geselce').id
 assert not Uporabnik.prijavi('janez', 'geselce')
+micka.spremeni_geslo('novo_geslo')
+assert micka.id == Uporabnik.prijavi('micka', 'novo_geslo').id
+assert not Uporabnik.prijavi('micka', 'geselce')
 
 assert len(list(Oznaka.seznam())) == 11
 

@@ -31,6 +31,34 @@ def polje(kljuc=None, samodejno=None, enolicno=False, obvezno=True, shrani=True,
                     ))
 
 
+@dataclass
+class Padajoce:
+    """
+    Razred za padajoče urejanje.
+    """
+    stolpec: str
+
+    def __str__(self):
+        """
+        Vrni znakovno predstavitev padajoče ureditve.
+        """
+        return f"{self.stolpec} DESC"
+
+
+@dataclass
+class Vzorec:
+    """
+    Razred za vzorce za uporabo z LIKE.
+    """
+    vzorec: str
+
+    def __str__(self):
+        """
+        Vrni znakovno  predstavitev vzorca.
+        """
+        return self.vzorec
+
+
 class Kazalec:
     """
     Upravitelj konteksta za kazalce.
@@ -102,7 +130,8 @@ class Tabela:
 
     TABELE = []
 
-    def __init_subclass__(cls, /, dodaj=False, vir=None, enolicnost=[], **kwargs):
+    def __init_subclass__(cls, /, dodaj=False, uredi=[],
+                          vir=None, enolicnost=[], **kwargs):
         """
         Inicializacija podrazreda.
 
@@ -113,6 +142,7 @@ class Tabela:
             cls.TABELE.append(cls)
             cls.VIR = vir
             cls.ENOLICNOST = enolicnost
+            cls.UREDI = uredi
             dataclass(cls)
             dataclass_json(cls)
 
@@ -268,20 +298,42 @@ class Tabela:
                 """, vrstica)
 
     @classmethod
-    def poisci(cls, /, **kwargs):
+    def seznam(cls, /, dodatni_stolpci=(), uredi=None, omejitev=None, **kwargs):
         """
         Vrni objekt z navedenim ključem.
         Če takega objekta ni, sproži napako.
         """
-        stolpci = [f.name for f in fields(cls) if f.metadata['shrani']]
+        stolpci = [f.name for f in fields(cls)
+                   if f.metadata['shrani'] or f.name in dodatni_stolpci]
+        if kwargs:
+            where = f"WHERE {' AND '.join(
+                f'{stolpec} LIKE :{stolpec}' if isinstance(kwargs[stolpec], Vzorec)
+                else f'{stolpec} = :{stolpec}' for stolpec in kwargs)}"
+        else:
+            where = ""
+        if uredi is None:
+            uredi = cls.UREDI
+        if uredi:
+            orderby = f"ORDER BY {', '.join(str(stolpec) for stolpec in uredi)}"
+        else:
+            orderby = ""
+        if omejitev:
+            limit = "LIMIT :_omejitev"
+            kwargs['_omejitev'] = omejitev
+        else:
+            limit = ""
         sql = f"""
           SELECT {', '.join(stolpci)}
             FROM {cls._ime_tabele()}
-           WHERE {' AND '.join(f'{stolpec} = :{stolpec}' for stolpec in kwargs)};
+           {where}
+           {orderby}
+           {limit};
         """
         with Kazalec() as cur:
-            cur.execute(sql, kwargs)
+            cur.execute(sql, {stolpec: str(vrednost) if isinstance(vrednost, Vzorec)
+                              else vrednost for stolpec, vrednost in kwargs.items()})
             yield from (cls(**dict(zip(stolpci, vrstica))) for vrstica in cur)
+
 
 class Entiteta(Tabela):
     """

@@ -7,7 +7,7 @@
 
 import bcrypt
 from orm import Entiteta, Odnos
-from orm import polje, pobrisi_tabele, ustvari_bazo
+from orm import polje, Padajoce, Vzorec, pobrisi_tabele, ustvari_bazo
 
 # TODO: odstrani!
 from orm import conn, Kazalec
@@ -41,20 +41,16 @@ class Uporabnik(Entiteta, vir='uporabnik.csv'):
         Vrni uporabnika z navedenim uporabniškim imenom in geslom.
         Če takega uporabnika ni, vrni neprijavljenega uporabnika.
         """
-        sql = """
-          SELECT id, uporabnisko_ime, admin, geslo
-            FROM uporabnik WHERE uporabnisko_ime = ?;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [uporabnisko_ime])
-            vrstica = cur.fetchone()
-            if vrstica is None:
-                return Uporabnik.NULL
-            *data, zgostitev = vrstica
-            if zgostitev and bcrypt.checkpw(geslo.encode("utf-8"), zgostitev):
-                return Uporabnik(*data)
-            else:
-                return Uporabnik.NULL
+        try:
+            uporabnik, = Uporabnik.seznam(uporabnisko_ime=uporabnisko_ime,
+                                          dodatni_stolpci=['geslo'])
+        except ValueError:
+            return Uporabnik.NULL
+        if uporabnik.geslo and bcrypt.checkpw(geslo.encode("utf-8"), uporabnik.geslo):
+            del uporabnik.geslo
+            return uporabnik
+        else:
+            return Uporabnik.NULL
 
     @classmethod
     def z_id(cls, idu):
@@ -87,18 +83,10 @@ class Uporabnik(Entiteta, vir='uporabnik.csv'):
         """
         Spremeni uporabnikovo geslo.
         """
-        assert self.id, "Uporabnik še ni vpisan v bazo!"
-        sql = """
-          UPDATE uporabnik SET geslo = ?
-           WHERE id = ?;
-        """
-        zgostitev = self.zgostitev(geslo)
-        with Kazalec() as cur:
-            with conn:
-                cur.execute(sql, [zgostitev, self.id])
+        self.posodobi(geslo=self.zgostitev(geslo))
 
 
-class Oznaka(Entiteta, kljuc='kratica'):
+class Oznaka(Entiteta, kljuc='kratica', uredi=['kratica']):
     """
     Razred za oznako filma.
     """
@@ -107,15 +95,6 @@ class Oznaka(Entiteta, kljuc='kratica'):
 
     IME = 'kratica'
 
-    @staticmethod
-    def seznam():
-        sql = """
-            SELECT kratica FROM oznaka
-            ORDER BY kratica;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql)
-            yield from (Oznaka(kratica) for kratica, in cur)
 
 class Film(Entiteta, vir='film.csv'):
     """
@@ -154,16 +133,7 @@ class Film(Entiteta, vir='film.csv'):
         """
         Vrni najboljših n filmov v danem letu.
         """
-        sql = """
-            SELECT id, naslov, dolzina, leto, ocena
-              FROM film
-             WHERE leto = ?
-             ORDER BY ocena DESC
-             LIMIT ?;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [leto, n])
-            yield from (Film(*vrstica) for vrstica in cur)
+        yield from Film.seznam(leto=leto, uredi=[Padajoce('ocena')], omejitev=n)
 
     def zasedba(self):
         """
@@ -216,12 +186,7 @@ class Oseba(Entiteta, vir='oseba.csv'):
         """
         Vrni vse osebe, ki v imenu vsebujejo dani niz.
         """
-        sql = """
-            SELECT id, ime FROM oseba WHERE ime LIKE ?;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, ['%' + niz + '%'])
-            yield from (Oseba(*vrstica) for vrstica in cur)
+        yield from Oseba.seznam(ime=Vzorec('%' + niz + '%'))
 
 
 class Zanr(Entiteta):
@@ -278,7 +243,7 @@ class Pripada(Odnos, vir='zanr.csv'):
         Obdelaj podatek pred uvozom.
         """
         try:
-            zanr, = Zanr.poisci(naziv=vrstica['naziv'])
+            zanr, = Zanr.seznam(naziv=vrstica['naziv'])
         except ValueError:
             zanr = Zanr(naziv=vrstica['naziv'])
             zanr.dodaj(False)
