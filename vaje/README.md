@@ -49,7 +49,7 @@ Django-tov "vmesnik" med našimi modeli in dejansko podatkovno bazo so [migracij
 Migracije za aplikacijo *filmiapp* pripravimo z ukazom:\
 `python manage.py makemigrations filmiapp`.
 Vse pripravljene migracije potem apliciramo (ustvarimo/spremenimo bazo) z ukazom:\
-`python manage.py migrate`. 
+`python manage.py migrate`.\
 Pri tem opazimo, da je Django migriral še ostale modele, ki so bili privzeti nastavljeni (ostale aplikacije v `INSTALLED_APPS`).\
 S pomočjo ukaza:
 `python manage.py sqlmigrate filmiapp 0001`
@@ -62,7 +62,47 @@ Opazimo še, da je v našem projektu zdaj prisotna še datoteka `db.sqlite3` (RD
 Če poženemo `python manage.py shell` vstopimo v Pythonov shell, kjer lahko stestiramo Djangotov ORM.\
 Ustvarimo lahko npr. objekte iz naših modelov in jih shranjujemo v podatkovno bazo.
 Nekaj primerov je [tu](https://docs.djangoproject.com/en/6.0/topics/db/models/).\
-Dobra praksa je še, da vsakemu modelu dodamo še `__str__` metodo, s katero dobimo lepši izpit.\
+Dobra praksa je še, da vsakemu modelu dodamo še `__str__` metodo, s katero dobimo lepši izpis.\
 \
 Poleg shell-a lahko do baze dostopamo tudi s pomočjo skrbniške nadzorne plošče.
 V ta namen moramo naše modele dodati v `admin.py` datoteko v naši aplikaciji.
+
+# 3. Vaje
+
+Na 3. vajah smo v `models.py` dodali vse modele, ki ste jih imeli na predavanjih.
+Pri tem smo si na veliko pomagali z referenco o različnih možnosti za [polja](https://docs.djangoproject.com/en/6.0/ref/models/fields/#model-field-types),
+na primer:
+- `models.CharField()` smo že opazili, ustreza `VARCHAR` v SQL (nujno je treba dati še argument `max_length`),
+- `models.IntegerField()` ustreža celemu številu (integer), dovoljene vrednosti so vsaj do +-2*10^9,
+- `models.FloatField()` predstavlja decimalno (floating point) število,
+- `models.PositiveIntegerField()` ustreza naravnemu številu (do vsaj ~2*10^9), tehnično je dovoljena tudi vrednost `0` (ampak se ji raje izognemo - kot vidimo v dokumentaciji je to zgolj zaradi "backwards compatibility" razlogov)
+- `models.PositiveSmallIntegerField()` ustreza naravnemu število do vsaj ~3*10^4, spet je dovojlena tudi vrednost `0`.
+- `models.ForeignKey` referenca na ključ kakšne druge tabele, torej many-to-one relacija. Nujna argumenta sta Class na katerega se referenciramo ter `on_delete`. Avtomatsko se naredi tudi index na tem stolpcu (kar seveda lahko tudi disable-amo).
+
+Ti fieldi imajo lahko tudi argumente:
+- `null`: privzeto je `False`, kar ustreza `NOT NULL` v SQL.
+- `blank`: privzeto je `False`, kar pomeni, da je ob vnosu (v formah ali na skrbniški nadzorni plošči), ta podatek obvezno vnesti.
+- `default` - privzeta vrednost za to polje.
+- `editable` - privzeto je `True`, kar pomeni, da lahko to polje ročno popravimo npr. na skrbniški nadzorni plošči.
+- `help_text` - text, ki se pojavi kot pomoč, npr. pri vnosu tega polja
+- `verbose_name` - podrobneje ime polja, ki se izpiše npr. pri formah ali na skrbniški nadzorni plošči (privzeto se izpiše kar ime atributa)
+- `primary_key` - `True`, če želimo, da je dotično polje primary key. Če tega ne nastavimo, Django avtomatsko naredi primary-key `id` za nas.
+- `unique` - privzeto je `False`, kar pomeni, da vrednosti niso nujno enolične.
+- `on_delete` - relevantno za `ForeignKey`, pove kaj se zgodi, če zbrišemo objekt na katerega se `ForeignKey` nanaša.
+
+Kot prej ima vsak model tudi svoj `__str__`, kjer včasih vrnemo f-nize (saj morda ne vračamo vedno le CharFielda in je treba atribut najprej pretvoriti v niz).
+
+Modeli iz predavanj, ki jih nismo dodali v Django `models.py`:\
+- `Uporabnik`, saj je Django že sam avtomatsko ustvaril ta model (kot smo videli v skrbniški nadzorni plošči).
+- `Vloga` in `Pripada`, saj so to povezovalne table (many-to-many), katere lahko v Django boljše naredimo, kar bomo videli kasneje.
+
+Ko končamo, dodamo vse nove modele še v `admin.py` ter spet poženemo `makemigrations` ter `migrate` in nove tabele bi morale biti
+vidne v skrbniški nadzorni plošči, kjer lahko že dodajamo in spreminjamo podatke.
+
+## meta podatki
+
+V naše modele lahko dodamo še meta [podatke](https://docs.djangoproject.com/en/6.0/topics/db/models/#meta-options).
+To naredimo s tem, da dodamo vgnezden `class Meta`.
+V `Meta` razred lahko npr. dodamo ordering, ki določa v katerem vrstnem redu se bodo vrstice prikazovale.
+Definiramo lahko tudi kako se prikazuje ime modela v množini, torej končno imamo lahko "Osebe" in "Filmi" v skrbniški nadzorni plošči, namesto "Osebas" in "Films".
+
