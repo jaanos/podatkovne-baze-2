@@ -23,7 +23,7 @@ class Film(models.Model):
     naslov = models.CharField(max_length=200, verbose_name="Naslov filma")
     dolzina = models.PositiveIntegerField(verbose_name="Dolžina filma v minutah")
     leto = models.PositiveSmallIntegerField(verbose_name="Leto izida filma")
-    ocena = models.FloatField(verbose_name="Ocena filma") # Omejimo to na [0,10]?
+    ocena = models.DecimalField(max_digits=3, decimal_places=1, verbose_name="Ocena filma") # Omejimo to na [0,10]?
     metascore = models.PositiveSmallIntegerField(null=True, blank=True)
     glasovi = models.IntegerField(default=0, verbose_name="Število glasov za film")
     zasluzek = models.BigIntegerField(blank=True, null=True, verbose_name="Zaslužek filma (USD)")
