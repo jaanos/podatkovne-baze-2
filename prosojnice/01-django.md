@@ -3,7 +3,7 @@ marp: true
 style: "@import url('style.css')"
 ---
 
-{% raw %}
+<span class="hidden">{% raw %}</span>
 
 # Django
 
@@ -171,4 +171,4 @@ style: "@import url('style.css')"
   * `"ime_poti"` je ime, podano s parametrom `name` pri določitvi poti s funkcijo `django.urls.path`
   * Dodatni argumenti (vsi poimenovani ali nepoimenovani) se vstavijo v pot.
 
-{% endraw %}
+<span class="hidden">{% endraw %}</span>
