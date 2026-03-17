@@ -7,11 +7,8 @@
 
 import bcrypt
 from orm import Entiteta, Odnos
-from orm import polje, Padajoce, Vzorec, pobrisi_tabele, ustvari_bazo
+from orm import polje, Padajoce, Vzorec
 
-# TODO: odstrani!
-from orm import conn, Kazalec
-from orm import dbapi
 
 class Uporabnik(Entiteta, vir='uporabnik.csv'):
     """
@@ -142,17 +139,8 @@ class Film(Entiteta, vir='film.csv'):
         najprej režiserji, potem igralci,
         v ustreznem vrstnem redu
         """
-        sql = """
-            SELECT oseba.id, oseba.ime, vloga.tip, vloga.mesto
-              FROM oseba
-              JOIN vloga ON oseba.id = vloga.oseba
-             WHERE vloga.film = ?
-             ORDER BY tip DESC, mesto;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [self.id])
-            yield from (Vloga(self, Oseba(oid, ime), tip, mesto)
-                        for oid, ime, tip, mesto in cur)
+        yield from self.vloga_film(uredi=[Padajoce('tip'), 'mesto'])
+
 
 class Oseba(Entiteta, vir='oseba.csv'):
     """
@@ -167,19 +155,9 @@ class Oseba(Entiteta, vir='oseba.csv'):
         """
         Vrni seznam vseh filmov, kjer
         je oseba self imela vlogo, 
-        urejeno po letih
+        urejeno po letih.
         """
-        sql = """
-            SELECT film.id, film.naslov, film.leto, vloga.tip, vloga.mesto
-              FROM film
-              JOIN vloga ON film.id = vloga.film
-             WHERE vloga.oseba = ?
-             ORDER BY leto;
-        """
-        with Kazalec() as cur:
-            cur.execute(sql, [self.id])
-            yield from (Vloga(Film(fid, naslov, leto=leto), self, tip, mesto)
-                        for fid, naslov, leto, tip, mesto in cur)
+        yield from self.vloga_oseba(uredi=[('film', 'leto')])
 
     @staticmethod
     def poisci(niz):

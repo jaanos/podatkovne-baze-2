@@ -42,7 +42,7 @@ class Padajoce:
         """
         Vrni znakovno predstavitev padajoče ureditve.
         """
-        return f"{self.stolpec} DESC"
+        return f"{Tabela._stolpec_za_urejanje(self.stolpec)} DESC"
 
 
 @dataclass
@@ -325,6 +325,15 @@ class Tabela:
                       if issubclass(f.type, Entiteta) else slovar[preslikava[tabela, f]]
                       for f in polja[tabela]})
 
+    @staticmethod
+    def _stolpec_za_urejanje(stolpec):
+        if isinstance(stolpec, Padajoce):
+            return str(stolpec)
+        if isinstance(stolpec, str):
+            stolpec = (stolpec, )
+        *predpone, stolpec = stolpec
+        return f"{''.join(f'{s}_' for s in predpone)}_.{stolpec}"
+
     @classmethod
     def seznam(cls, /, dodatni_stolpci=(), uredi=None, omejitev=None, **kwargs):
         """
@@ -343,7 +352,8 @@ class Tabela:
         if uredi is None:
             uredi = cls.UREDI
         if uredi:
-            orderby = f"ORDER BY {', '.join(f"_.{stolpec}" for stolpec in uredi)}"
+            orderby = f"ORDER BY {', '.join(
+                f"{Tabela._stolpec_za_urejanje(stolpec)}" for stolpec in uredi)}"
         else:
             orderby = ""
         if omejitev:
@@ -440,6 +450,20 @@ class Odnos(Tabela):
         Inicializacija podrazreda.
         """
         super().__init_subclass__(dodaj=True, **kwargs)
+        for f in fields(cls):
+            if issubclass(f.type, Entiteta):
+                setattr(f.type, f'{cls._ime_tabele()}_{f.name}',
+                        cls._metoda_za_odnose(f.name))
+
+    @classmethod
+    def _metoda_za_odnose(cls, stolpec):
+        """
+        Vrni metodo, ki vrne v se odnose za objekt, iz katere jo kličemo.
+        """
+        def odnosi(self, /, **kwargs):
+            yield from cls.seznam(**{stolpec: getattr(self, self.KLJUC.name)},
+                                  **kwargs)
+        return odnosi
 
     @classmethod
     def _kljuc(cls):

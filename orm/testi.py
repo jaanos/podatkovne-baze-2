@@ -1,6 +1,6 @@
 from model import Uporabnik, Oznaka, Film, Oseba, Zanr, Vloga, Pripada
-from model import pobrisi_tabele, ustvari_bazo
-from model import conn
+from orm import pobrisi_tabele, ustvari_bazo
+from orm import conn
 
 pobrisi_tabele()
 ustvari_bazo()
