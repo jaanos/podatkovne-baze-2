@@ -3,6 +3,8 @@ marp: true
 style: "@import url('style.css')"
 ---
 
+{% raw %}
+
 # Django
 
 * [Django](https://www.djangoproject.com/) je ogrodje za razvoj spletnih aplikacij, ki vključuje:
@@ -168,3 +170,5 @@ style: "@import url('style.css')"
   ```
   * `"ime_poti"` je ime, podano s parametrom `name` pri določitvi poti s funkcijo `django.urls.path`
   * Dodatni argumenti (vsi poimenovani ali nepoimenovani) se vstavijo v pot.
+
+{% endraw %}
