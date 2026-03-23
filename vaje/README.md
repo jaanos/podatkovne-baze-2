@@ -106,3 +106,51 @@ To naredimo s tem, da dodamo vgnezden `class Meta`.
 V `Meta` razred lahko npr. dodamo ordering, ki določa v katerem vrstnem redu se bodo vrstice prikazovale.
 Definiramo lahko tudi kako se prikazuje ime modela v množini, torej končno imamo lahko "Osebe" in "Filmi" v skrbniški nadzorni plošči, namesto "Osebas" in "Films".
 
+# 4. Vaje
+
+## Popravek iz 3. vaj
+Namesto `FloatField` je pri nas za oceno filma primerneje uporabljati `DecimalField`, ki ustreza Pythonovem `Decimal` objektu. Ta objekt lahko omejimo npr. na 3 števke z 1 decimalko, kar je ravno format ocen, ki ga želimo. (hvala za popravek Janoš!).
+
+## Dodajanje many-to-many relacij
+
+Na 4. Vajah smo najprej dodali še modele za odnose (Many-To-Many relacije).\
+
+Django zna sam ustvariti povezovalne tabele, kar povemo tako, da enemu izmed povezanih modelov dodamo `models.ManyToMany` polje.\
+
+Konkretneje, modelu za `Film` smo dodali `models.ManyToMany` polje `zanri`, ki sprejme razred `Zanr` (navada je, da je ime polja kar ime modela v množini).\
+
+Če s pomočjo npr. sqlite3 zdaj (po migraciji, seveda) pogledamo bazo, opazimo, da je Django naredil povezovalno tabelo.\
+
+Django ustvari povezovalno tabelo, če `ManyToMany` dodamo v enega izmed povezanih objektov (kateregakoli, a ne v oba). Ponavadi dodamo to polje v objekt, kjer je to smiselneje - Iz praktičnih vidikov je smiselneje, da bomo, npr. pri vnosu (na skrbniški nadzorni plošči ali drugje) uporabnika vprašali naj našteje žanre filma, ko bo dodajal film. Čudno bi bilo, če bi moral uporabnik pri dodajanju žanra našteti vse filme!\
+
+
+Odnos `Vloga` je nekoliko kompleksnejši, saj ima ta še dodatne stolpce. V takih primerih naredimo nov razred `Vloga`, kjer natančeneje opišemo kako izgleda povezovalna tabela in jo uporabimo tako, da v `models.ManyToMany` field, dodamo drugi argument `through=`. V našem primeru smo v model `Film` dodali `models.ManyToMany` field na model `Oseba`, povezan preko `through=Vloga`.\
+
+Ob priliki smo spoznali še nekaj novosti:
+- Polja lahko sprejmejo tudi argument `choices=`, ki omeji možne vnose v npr. `CharField`. Možne izbire lahko podamo na več načinov, npr. kot seznam parov ali pa slovar...
+- V `Meta` gnezdeni class lahko dodamo `models.UniqueConstraint`, ki pove kateri stolpci v tabeli morajo skupaj biti enolični (`UNIQUE` keyword v SQL)
+
+## Uvoz modelov iz .csv datotek
+
+Zdaj, ko imamo vse modele jih populirajmo kar z istimi `.csv` datotekami kot na predavanjih.
+V ta namen smo ustvarili skripto `napolni_bazo.py`, kjer lahko vidimo, kako v Django-tu interagiramo z bazo.\
+
+Vsakemu modelu pripada `Managar`, ki ga kličemo kot npr.\
+`Oseba.objects`\
+S pomočjo le-tega lahko enostavno interagiramo z podatkovno bazo.
+Imamo npr:
+- Z `Oseba.objects.all()` lahko iteriramo skozi vse objekte `Oseba`.
+- Z `Oseba.object.bulk_create(arg)` lahko iz seznama (ali podobno) `arg` objektov `Oseba` populiramo bazo.
+- Imamo tudi `Oseba.object.create(..)`, `Oseba.object.get(..)`... kaj več bomo videli drugič
+
+Paket `django.db` vsebuje `transaction` s pomočjo česar lahko več interakcij z bazo zapakiramo v eno (atomično - izvede se le cela ali ne, ne more se "delno izvest") SQL transakcijo.\
+
+Pri nas je to lahko koristno iz vidika učinkovitosti (privzeto je vsak Django klic, ki interagira z bazo, npr. save() ena transakcija)\
+
+iz Podatkovnih Baz 1 pa vemo, da so transakcije koristne tudi kot način za garantiranje ACID lastnosti podatkovnih baz, ki so v praksi zelo pomembne.\
+
+Funkcijo `napolni_bazo.py` kličemo kar iz Django shell-a (`python manage.py shell`), kjer najprej uvozimo modul (našo skripto), npr.\
+
+`import filmapp.napolni_bazo` in potem `filmapp.napolni_bazo.main()`\
+
+ali pa `from filmapp.napolni_bazo import main` in potem `main()`.
