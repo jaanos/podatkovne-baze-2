@@ -155,3 +155,77 @@ iz Podatkovnih Baz 1 pa vemo, da so transakcije koristne tudi kot način za gara
 
 Funkcijo `napolni_bazo.py` kličemo kar iz Django shell-a (`python manage.py shell`), kjer najprej uvozimo modul (našo skripto), npr.
 `from filmapp.napolni_bazo import main` in potem `main()`.
+
+# 5. Vaje
+
+## Novi pogled - prikaži informacije o danem filmu
+
+### Pogled z dodatnimi argumenti
+
+Na vajah smo naredili resnejši pogled, ki prikazuje informacije, shranjene na podatkovni bazi.
+Ta pogled bo poleg obveznega `request` parametra sprejel še drugi parameter `film_id` in prikazal informacije za dotičen film.
+V njem s pomočjo `Film.objects.get(id=film_id)` pridobimo informacijo o dotičnem filmu, ki jo potem lahko prikažemo (recimo, spet z `HttpResponse` kot v našem prvem, testnem pogledu).
+Kako pa bomo dostopali do tega pogleda? Številka `film_id` bo del url-ja. To lahko dosežemo tako, da v `urls.py` v path dodamo nekaj takega kot `film/<int:film_id>`. To pomeni, da na tem mestu v URL-ju pričakujemo število (int). To število bo drugi argument v našem pogledu.
+Če sedaj gremo na našo aplikacijo in na koncu url-ja dodamo npr. `filmi/film/4972`, se bo prikazal primeren pogled (saj obstaja film s tem id-jem)
+
+### 404 error
+
+Če poskusimo priti na `filmi/film/1` bomo videli napako, saj v naši bazi ni filma s tem id-jem. V takih primerih bi bilo dobro sprožiti neko smiselno napako.
+Vemo, da ima http nekaj uveljavjlenih [kod za napake](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes). V našem primeru bi bilo dobro sprožiti napako 404 - page not found.
+To bi lahko storili tako, da `Film.objects.get(id=film_id)` zapakiramo v `try ... except ...` block, kjer raisamo primerno napako (V djangu obstaja 404 exception), vendar je ta situacija ("Poišči nekaj v bazi in vrži napako 404, če ta ne obstaja") tako pogosta, da v Djangu obstaja bližnjica `get_object_or_404`, ki se nahaja v paketu `django.shortcuts`.
+Uporabimo jo kot
+
+`film = get_object_or_404(Film, id=film_id)`
+
+Če bo poizvedba uspešna se rezultat shrani v spremenljivko film, sicer pa se sproži napaka 404 (v Django pogledih se mora vedno vrniti primeren HttpResponse ali pa sprožiti napako).
+
+Če zdaj ponovno gremo na `filmi/film/1` bomo opazili 404 error. Sicer vseeno ni podoben takšnemu kot smo jih vajeni iz vsakdanjega življenja - razlog je, da je v naših `settings.py` projekta nastavjlen `DEBUG = True`, zaradi česar tudi 404 error page poda nekaj dodatne informacije. Če začasno spremenimo na `DEBUG = False` opazimo kompaktnejši 404 error.
+
+### Predloge
+
+Morda se spomnimo, da smo za naš prvi testni pogled morali posebej uvozit `HttpResponse`. Django je privzeto za nas "pripravil" le funkcijo `render`, ki je še nismo uporabili.
+Razlog je enostaven - v praksi se za prikazovanje pogledov uporablja `render` (ki vrača `HttpResponse`) in ne sam `HttpResponse`. S pomočjo funkcije `render` lahko razne podatke (npr. o filmu) pošljemo predlogi (template), ki predstavlja nekakšno ogrodje v HTML-ju, ki se bo populirali s poslanimi podatki.
+
+V naši aplikaciji ustvarimo novo mapo `templates`, v kateri bodo shranjene naše predloge. Za preprečevanje konfliktov (v primeru, da bi imeli več predlog z istim imenom, kar se lahko zgodi pri večjih projektih), v mapi `templates` ustvarimo podmapo `filmiapp` v njo pa `film_podrobnosti.html`, kar bo naša predloga za ta pogled.
+
+Najprej pomislimo kakšne informacije bomo iz pogleda poslali predlogi. Funkcijo `render` uporabimo na naslednji način:
+
+`return render(request, 'filmiapp/film_podrobnosti.html', kontekst)`
+
+Prvi argument je request (kar je tudi prvi argument pogleda), drugi argument je naša predloga, tretji pa je kontekst - Python slovar, ki vsebuje dodatne podatke s katerimi hočemo populirati predlogo. V našem primeru bo kontekst pod ključem "film" imel niz reprezentacijo filma (ki smo jo že definirali), pod ključem "podrobnosti" pa seznam parov (verbose ime polja, vrednost polja).
+
+Predlogo pa pišemo kot ponavadi HTML, le da imamo na voljo nekatere značke, o katerih ste govorili že na predavanjih.
+Tu smo uporabili:
+- Značko `{{ ime_spremenljivke }}`, ki izpiše vrednost dane spremenljivke (v našem primeru v naslovu izpiše ime filma).
+- Značko `{ % for ... in ... % }`, ki predstavlja zankanje (pri nas čez polja Film-a). Ker za razliko od Pythona nimamo identacije, moramo zanko zaključiti z `{% endfor %}`.
+
+## Dodaten pogled - poišči najbolje ocenjenih X filmov
+
+Naredimo še pogled, ki bo izpisal najboljse ocenjene filme. Spet torej dodamo novo funkcijo v `views.py` ter pripadajoč url v `urls.py`. 
+Pogled spet sprejme številski argument - `st_najboljsih`, ki nam pove koliko najboljših filmov bomo prikazali.
+S pomočjo objects Managerja lahko najboljše dobimo kot
+
+`Film.objects.order_by('-ocena')[:st_najboljsih]`
+
+`order_by` vrne filme, urejene po danem polju (stolpcu). Privzeto so urejeni naraščujoče, zato dodamo pred ime `-`, da bodo padajoče (DESC v SQL).
+Na koncu izberemo le prvih `st_najboljsih` (LIMIT v SQL). Potrebne podatke potem spet shranimo v slovar (kontekst) in z `render()` to passamo v novo predlogo.
+
+V predlogi `filmiapp/film_podrobnosti.html` prikažemo seznam (ordered list v HTML) najboljših nekaj filmov.
+Posamezen element seznama je imel na začetku obliko:
+`<li><a href="/filmi/film/{{id}}">{{naslov}}</a>: {{ocena}}</li>`
+
+Ideja je, da lahko na naslov filma kliknemo, kar nas vrže na primerno stran, ki prikaže dodatne informacije o danem filmu.
+Tak pristop krši [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) princip programiranja - isto informacijo (url) imamo zdaj na dveh mestih. V naši predlogi ter v `urls.py`. To zlahka vodi do napak, če bomo npr. enkrat spremenili url v `urls.py`, ampak pozabili spremeniti v predlogi (oziroma mogoče celo v več predlogah...)
+
+To lahko rešimo z `{% url ... %}` značko, ki ji damo ime poti iz `urls.py`:
+
+`<li><a href="{% url 'film_podrobnosti' id %}">{{naslov}}</a>: {{ocena}}</li>`
+
+Podobno kot pri predlogah, smo lahko v težavah pri večjih projektih, saj morda več aplikacij uporablja isto ime za razne poti.
+V tem primeru lahko dodamo namespacing našim potem (eksplicitno povemo še iz katere aplikacije jemljemo določeno pot).
+
+Zgornji element seznama tako postane:
+
+`<li><a href="{% url 'filmiapp:film_podrobnosti' id %}">{{naslov}}</a>: {{ocena}}</li>`
+
+

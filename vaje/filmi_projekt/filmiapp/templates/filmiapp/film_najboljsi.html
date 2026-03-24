@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+
+<html>
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ stevilo }} najboljsih filmov</title>
+  </head>
+
+  <body>
+    <h1>{{ stevilo }} najboljsih filmov (po ocenah)</h1>
+    <ol>
+        {% for id, naslov, ocena in info_najboljsi %}
+        <li><a href="{% url 'filmiapp:film_podrobnosti' id %}">{{naslov}}</a>: {{ocena}}</li>
+        {% endfor %}
+    </ol>
+  </body>
+
+</html>
