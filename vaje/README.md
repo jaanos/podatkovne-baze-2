@@ -197,7 +197,7 @@ Prvi argument je request (kar je tudi prvi argument pogleda), drugi argument je 
 Predlogo pa pišemo kot ponavadi HTML, le da imamo na voljo nekatere značke, o katerih ste govorili že na predavanjih.
 Tu smo uporabili:
 - Značko `{{ ime_spremenljivke }}`, ki izpiše vrednost dane spremenljivke (v našem primeru v naslovu izpiše ime filma).
-- Značko `{ % for ... in ... % }`, ki predstavlja zankanje (pri nas čez polja Film-a). Ker za razliko od Pythona nimamo identacije, moramo zanko zaključiti z `{% endfor %}`.
+- Značko `{ "% for ... in ... %" }` (brez navednic), ki predstavlja zankanje (pri nas čez polja Film-a). Ker za razliko od Pythona nimamo identacije, moramo zanko zaključiti z `{"% endfor %"}` (brez navednic).
 
 ## Dodaten pogled - poišči najbolje ocenjenih X filmov
 
@@ -217,15 +217,15 @@ Posamezen element seznama je imel na začetku obliko:
 Ideja je, da lahko na naslov filma kliknemo, kar nas vrže na primerno stran, ki prikaže dodatne informacije o danem filmu.
 Tak pristop krši [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) princip programiranja - isto informacijo (url) imamo zdaj na dveh mestih. V naši predlogi ter v `urls.py`. To zlahka vodi do napak, če bomo npr. enkrat spremenili url v `urls.py`, ampak pozabili spremeniti v predlogi (oziroma mogoče celo v več predlogah...)
 
-To lahko rešimo z `{% url ... %}` značko, ki ji damo ime poti iz `urls.py`:
+To lahko rešimo z `{"% url ... %"}` značko (brez navednic), ki ji damo ime poti iz `urls.py`:
 
-`<li><a href="{% url 'film_podrobnosti' id %}">{{naslov}}</a>: {{ocena}}</li>`
+`<li><a href="{"% url 'film_podrobnosti' id %"}">{{naslov}}</a>: {{ocena}}</li>`
 
 Podobno kot pri predlogah, smo lahko v težavah pri večjih projektih, saj morda več aplikacij uporablja isto ime za razne poti.
 V tem primeru lahko dodamo namespacing našim potem (eksplicitno povemo še iz katere aplikacije jemljemo določeno pot).
 
 Zgornji element seznama tako postane:
 
-`<li><a href="{% url 'filmiapp:film_podrobnosti' id %}">{{naslov}}</a>: {{ocena}}</li>`
+`<li><a href="{"% url 'filmiapp:film_podrobnosti' id %"}">{{naslov}}</a>: {{ocena}}</li>`
 
 
