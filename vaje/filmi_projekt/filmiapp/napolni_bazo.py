@@ -6,19 +6,19 @@ from filmiapp.models import Oseba, Film, Vloga, Zanr, Oznaka
 def uvozi_osebe():
     """
     Skripta, ki uvozi osebe v podatkovno bazo.
-    Demonstracija priročnega "bulk_create"
     """
 
     print('Brisanje obstoječih oseb iz baze...')
     Oseba.objects.all().delete()
 
+    # Pri programiranju imajo pogosto imena spremenljivk, ki so konstante velike črke 
     OSEBE_CSV = "podatki/oseba.csv"
 
     print(f'Uvažanje oseb iz {OSEBE_CSV} v bazo...')
     osebe = []
     with open(OSEBE_CSV, encoding='utf-8') as f:
         reader = csv.reader(f)
-        next(reader) # preskočimo prvo vrstico
+        next(reader) # preskočimo prvo vrstico (ime stolpcev)
         for row in reader:
             # Eksplicitno nastavimo id, da smo konzistentni s podatki
             id, ime = row
@@ -37,7 +37,6 @@ def uvozi_osebe():
 def uvozi_filme():
     """
     Skripta, ki uvozi filme v podatkovno bazo.
-    Demonstracija atomic transakcij
     """
 
     print('Brisanje obstoječih filmov iz baze...')
@@ -47,14 +46,16 @@ def uvozi_filme():
 
     print(f'Uvažanje filmov iz {FILMI_CSV} v bazo...')
     filmi = []
-    # Oznak ni veliko in se večkrat ponavljajo. Da jih ne delamo na novo si jih shranimo v slovar
-    slovar_oznak = {} #
+    # Filmi imajo tuj ključ na oznako - te bomo sproti po potrebi kreirali.
+    # Oznak ni veliko in se večkrat ponavljajo. Da jih ne delamo na novo (pravzaprav ne bi bilo mogoče, saj je kratica primarni ključ),
+    #  si jih shranimo v slovar:
+    slovar_oznak = {} 
     with open(FILMI_CSV, encoding='utf-8') as f:
         reader = csv.reader(f)
-        next(reader) # preskočimo prvo vrstico
+        next(reader)
         for row in reader:
-            # To je sicer nekoliko manj berljivo, ker imamo toliko stolpcev. 
-            # Obstajajo lepše alternative npr. dictReader(), ampak v to se ne bomo spuščali
+            # Ta način branja .csv-ja je nekoliko manj berljiv, ker imamo toliko stolpcev. 
+            # Lepše bi bilo morda uporabiti csv.dictReader(f), ampak v to se ne bomo spuščali
             (id, naslov, dolzina, leto, ocena, 
              metascore, glasovi, zasluzek, 
              oznaka, opis) = row
@@ -79,23 +80,23 @@ def uvozi_filme():
             if opis:
                 film.opis = opis
             filmi.append(film)
+    # Prej je bilo zankanje in .save() zamudno, z transaction.atomic() pa je bolje
     with transaction.atomic():
-        for oznaka in slovar_oznak.values():
+        for oznaka in slovar_oznak.values(): # najprej shranimo oznake, saj jih imajo filmi kot tuj ključ.
             oznaka.save()
         for film in filmi:
-            film.save() # Prej je bilo to zamudno, z transaction.atomic() je bolje
+            film.save() 
 
-@transaction.atomic
+@transaction.atomic # transaction.atomic lahko uporabimo tudi kot decorator -> cela funkcija postane atomična operacija
 def uvozi_zanre():
     """
     Skripta, ki uvozi žanre v podatkovno bazo.
-    Demonstracija atomic transakcij z dekoratorji 
-    in get_or_create.
     Treba je paziti, da so filmi že v bazi!
-    Sicer pa ta funkcija ni zelo hitra, ker veliko interagiramo z bazo... več na vajah
+    Pozor: Ta funkcija vseeno ni zelo učinkovita, ker za vsako vrstico interagiramo z bazo.
+    Bolje bi bilo, če bi filme pred zanko enkrat prebrali, za žanre pa morda spet imeli slovar.
     """
-    print('Brisanje obstoječih žanrov iz baze...')
 
+    print('Brisanje obstoječih žanrov iz baze...')
     Zanr.objects.all().delete()
 
     ZANRI_CSV = "podatki/zanr.csv"
@@ -103,13 +104,12 @@ def uvozi_zanre():
     print(f'Uvažanje žanrov iz {ZANRI_CSV} v bazo...')
     with open(ZANRI_CSV, encoding='utf-8') as f:
         reader = csv.reader(f)
-        next(reader) # preskočimo prvo vrstico
+        next(reader)
         for row in reader:
             id_filma, naziv = row
-            film = Film.objects.get(id=int(id_filma))
-            # ni potrebno eksplicitno klicati .save(), ker sledeci metodi to že naredita
-            zanr, _ = Zanr.objects.get_or_create(naziv=naziv)
-            film.zanri.add(zanr)
+            film = Film.objects.get(id=int(id_filma))  # get enostavno vrne pripadajoč enoličen objekt, če je ta v bazi.
+            zanr, _ = Zanr.objects.get_or_create(naziv=naziv)  # če Zanra z nazivom naziv ni v bazi, se bo objekt naredil in shranil v bazo.
+            film.zanri.add(zanr)  # zanr dodamo v many-to-many relacijo z danim filmom. To se shrani tudi v bazo.
 
 def uvozi_vloge():
     """
@@ -131,7 +131,7 @@ def uvozi_vloge():
     # osebe = {oseba.id : oseba for oseba in Oseba.objects.all()}
     with open(VLOGE_CSV, encoding='utf-8') as f:
         reader = csv.reader(f)
-        next(reader) # preskočimo prvo vrstico
+        next(reader)
         for row in reader:
             id_filma, id_osebe, tip, mesto = row
             vloga = Vloga(
