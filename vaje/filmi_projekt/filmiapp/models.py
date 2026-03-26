@@ -58,10 +58,11 @@ class Vloga(models.Model):
     film = models.ForeignKey(Film, on_delete=models.CASCADE)
     oseba = models.ForeignKey(Oseba, on_delete=models.CASCADE)
     mesto = models.PositiveIntegerField()
-    tip = models.CharField(max_length=20, choices=TIPI_VLOG)
+    tip = models.CharField(max_length=20, choices=TIPI_VLOG.items())
 
     def __str__(self):
         return f'{self.mesto}. {self.TIPI_VLOG[self.tip].lower()} v filmu {self.film}'
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
