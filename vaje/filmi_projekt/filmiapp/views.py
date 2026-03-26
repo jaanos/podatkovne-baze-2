@@ -8,6 +8,9 @@ def test(request):
     return HttpResponse("To je test.")
 """
 
+def index(request):
+    return render(request, 'filmiapp/index.html', {})
+
 def film_podrobnosti(request, film_id):
     film = get_object_or_404(Film, id=film_id)
     polja = film._meta.get_fields()[2:] # Prvi dve polji sta vloga in id, ki nas ne zanimata

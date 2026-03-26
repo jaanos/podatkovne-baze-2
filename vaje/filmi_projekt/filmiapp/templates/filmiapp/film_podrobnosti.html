@@ -1,20 +1,12 @@
-<!DOCTYPE html>
+{% extends "filmiapp/osnova.html" %}
 
-<html>
+{% block naslov %}{{ film }}{% endblock %}
 
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ film }}</title>
-  </head>
-
-  <body>
+{% block vsebina %}
     <h1>{{ film }}</h1>
     <ul>
         {% for ime, vrednost in podrobnosti %}
         <li>{{ime}} : {{vrednost}}</li>
         {% endfor %}
     </ul>
-  </body>
-
-</html>
+{% endblock %}
