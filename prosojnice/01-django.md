@@ -171,4 +171,121 @@ style: "@import url('style.css')"
   * `"ime_poti"` je ime, podano s parametrom `name` pri določitvi poti s funkcijo `django.urls.path`
   * Dodatni argumenti (vsi poimenovani ali nepoimenovani) se vstavijo v pot.
 
+---
+
+# Objekti
+
+* Na podlagi definiranih modelov lahko ustvarimo ustrezne objekte:
+  ```python
+  chuck = Oseba(ime="Chuck Norris")
+  ```
+* Do objektov v bazi lahko dostopamo preko "upravnika" (*manager*) `Model.objects`:
+  ```python
+  Oseba.objects.all() # vse osebe
+  Zanr.objects.get(pk=1) # žanr z ID-jem 1
+
+  # filmi iz leta 2000, urejeni padajoče po oceni
+  Film.objects.filter(leto=2000).order_by("-ocena")
+
+  # glavne vloge v filmih, dolgih vsaj 200 minut, ki nimajo oznake PG-13
+  Vloga.objects.filter(film__dolzina__gte=200, mesto=1).exclude(film__oznaka='PG-13')
+  ```
+  * Dejanske poizvedbe se zgodijo šele takrat, ko potrebujemo podatke.
+
+---
+
+# Združevanje in grupiranje
+
+* Z metodo `aggregate` lahko uporabimo eno ali več združevalnih funkcij na objektih v bazi:
+  ```python
+  from django.db.models import Avg, Count, Max, Min, Sum
+  Film.objects.aggregate(Max("dolzina"), zasluzek=Sum("zasluzek"))
+  # {'zasluzek': 279926080502, 'dolzina__max': 450}
+  ```
+* Če želimo grupirati po objektih nekega modela, uporabimo metodo `annotate`:
+  ```python
+  q = Film.objects.annotate(Count("zanri"))
+  q[0].zanri__count
+  ```
+
+---
+
+# Kontrola prebranih atributov
+
+<span class="small">
+
+* Z metodama `only` in `defer` poskrbimo, da iz baze preberemo samo podane atribute, oziroma podanih atributov ne preberemo:
+  ```python
+  Film.objects.only("dolzina", "leto").get(naslov="Jurski park")
+  Film.objects.defer("opis").get(naslov="Jurski svet")
+  ```
+  * Če dostopamo do atributov, ki jih nismo prebrali, se bo naredila nova poizvedba!
+* Metoda `select_related` poskrbi, da se preberejo tudi objekti, na katere se sklicuje navedeni tuji ključ.
+  ```python
+  Film.objects.filter(naslov__startswith="Jurski").select_related("oznaka")
+  ```
+* Metoda `prefetch_related` poskrbi, da se preberejo tudi objekti, povezani z navedenim odnosom več na več.
+  ```python
+  Film.objects.filter(naslov__startswith="Jurski").prefetch_related("vloge")
+  ```
+
+</span>
+
+---
+
+# Zahtevnejše poizvedbe
+
+* Z razredoma `django.db.models.F` in `django.db.models.Q` lahko sestavljamo izraze, ki predstavljajo stolpce oziroma pogoje.
+  ```python
+  from django.db.models import F, Q
+
+  # Filmi, ki so zaslužili vsaj 100 mio dolarjev na oceno
+  # ali vsaj 5 mio dolarjev na minuto trajanja
+  Film.objects.annotate(
+    zasluzek_na_oceno=(F("zasluzek") / F("ocena")),
+    zasluzek_na_dolzino=(F("zasluzek") / F("dolzina"))
+  ).filter(
+    Q(zasluzek_na_oceno__gt=100_000_000) |
+    Q(zasluzek_na_dolzino__gt=5_000_000)
+  )
+  ```
+
+---
+
+# Spreminjanje objektov
+
+* Objektom lahko spreminjamo polja kot običajno:
+  ```python
+  chuck.ime = 'Chuck Norris (RIP)'
+  ```
+* Spremembe so lahko odvisne tudi od trenutnih podatkov v bazi (tudi, če jih nismo še prebrali):
+  ```python
+  film.ocena = F('ocena') + 1
+  ```
+* Spremembo v bazo zapišemo z metodo `save`.
+  ```python
+  chuck.save()
+  film.save()
+  ```
+
+---
+
+# Transakcije
+
+* Če ne določimo drugače, bo vsaka sprememba v bazi v svoji transakciji.
+* Lahko določimo, da se neko zaporedje ukazov izvede znotraj ene transakcije:
+  ```python
+  from django.db import transaction
+
+  with transaction.atomic():
+      # ukazi, ki naj tvorijo transakcijo
+  ```
+* Kot transakcijo lahko določimo tudi celotno funkcijo:
+  ```python
+  @transaction.atomic
+  def pogled(request, ...):
+      ...
+  ```
+* POZOR: preklic transakcije (npr. ob napaki) ponastavi stanje v bazi, ne pa tudi v objektih!
+
 <span class="hidden">{% endraw %}</span>

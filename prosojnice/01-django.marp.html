@@ -219,6 +219,112 @@
 </ul>
 </li>
 </ul>
+</section>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="13" data-marpit-fragments="3" data-style="@import url('style.css')" lang="sl-SI" style="--style:@import url('style.css');">
+<h1 id="objekti">Objekti</h1>
+<ul>
+<li data-marpit-fragment="1">Na podlagi definiranih modelov lahko ustvarimo ustrezne objekte:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">chuck = Oseba(ime=<span class="hljs-string">&quot;Chuck Norris&quot;</span>)
+</code></pre>
+</li>
+<li data-marpit-fragment="2">Do objektov v bazi lahko dostopamo preko &quot;upravnika&quot; (<em>manager</em>) <code>Model.objects</code>:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">Oseba.objects.<span class="hljs-built_in">all</span>() <span class="hljs-comment"># vse osebe</span>
+Zanr.objects.get(pk=<span class="hljs-number">1</span>) <span class="hljs-comment"># žanr z ID-jem 1</span>
+
+<span class="hljs-comment"># filmi iz leta 2000, urejeni padajoče po oceni</span>
+Film.objects.<span class="hljs-built_in">filter</span>(leto=<span class="hljs-number">2000</span>).order_by(<span class="hljs-string">&quot;-ocena&quot;</span>)
+
+<span class="hljs-comment"># glavne vloge v filmih, dolgih vsaj 200 minut, ki nimajo oznake PG-13</span>
+Vloga.objects.<span class="hljs-built_in">filter</span>(film__dolzina__gte=<span class="hljs-number">200</span>, mesto=<span class="hljs-number">1</span>).exclude(film__oznaka=<span class="hljs-string">&#x27;PG-13&#x27;</span>)
+</code></pre>
+<ul>
+<li data-marpit-fragment="3">Dejanske poizvedbe se zgodijo šele takrat, ko potrebujemo podatke.</li>
+</ul>
+</li>
+</ul>
+</section>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="14" data-marpit-fragments="2" data-style="@import url('style.css')" lang="sl-SI" style="--style:@import url('style.css');">
+<h1 id="zdru%C5%BEevanje-in-grupiranje">Združevanje in grupiranje</h1>
+<ul>
+<li data-marpit-fragment="1">Z metodo <code>aggregate</code> lahko uporabimo eno ali več združevalnih funkcij na objektih v bazi:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python"><span class="hljs-keyword">from</span> django.db.models <span class="hljs-keyword">import</span> Avg, Count, Max, Min, Sum
+Film.objects.aggregate(Max(<span class="hljs-string">&quot;dolzina&quot;</span>), zasluzek=Sum(<span class="hljs-string">&quot;zasluzek&quot;</span>))
+<span class="hljs-comment"># {&#x27;zasluzek&#x27;: 279926080502, &#x27;dolzina__max&#x27;: 450}</span>
+</code></pre>
+</li>
+<li data-marpit-fragment="2">Če želimo grupirati po objektih nekega modela, uporabimo metodo <code>annotate</code>:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">q = Film.objects.annotate(Count(<span class="hljs-string">&quot;zanri&quot;</span>))
+q[<span class="hljs-number">0</span>].zanri__count
+</code></pre>
+</li>
+</ul>
+</section>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="15" data-marpit-fragments="4" data-style="@import url('style.css')" lang="sl-SI" style="--style:@import url('style.css');">
+<h1 id="kontrola-prebranih-atributov">Kontrola prebranih atributov</h1>
+<span class="small">
+<ul>
+<li data-marpit-fragment="1">Z metodama <code>only</code> in <code>defer</code> poskrbimo, da iz baze preberemo samo podane atribute, oziroma podanih atributov ne preberemo:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">Film.objects.only(<span class="hljs-string">&quot;dolzina&quot;</span>, <span class="hljs-string">&quot;leto&quot;</span>).get(naslov=<span class="hljs-string">&quot;Jurski park&quot;</span>)
+Film.objects.defer(<span class="hljs-string">&quot;opis&quot;</span>).get(naslov=<span class="hljs-string">&quot;Jurski svet&quot;</span>)
+</code></pre>
+<ul>
+<li data-marpit-fragment="2">Če dostopamo do atributov, ki jih nismo prebrali, se bo naredila nova poizvedba!</li>
+</ul>
+</li>
+<li data-marpit-fragment="3">Metoda <code>select_related</code> poskrbi, da se preberejo tudi objekti, na katere se sklicuje navedeni tuji ključ.<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">Film.objects.<span class="hljs-built_in">filter</span>(naslov__startswith=<span class="hljs-string">&quot;Jurski&quot;</span>).select_related(<span class="hljs-string">&quot;oznaka&quot;</span>)
+</code></pre>
+</li>
+<li data-marpit-fragment="4">Metoda <code>prefetch_related</code> poskrbi, da se preberejo tudi objekti, povezani z navedenim odnosom več na več.<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">Film.objects.<span class="hljs-built_in">filter</span>(naslov__startswith=<span class="hljs-string">&quot;Jurski&quot;</span>).prefetch_related(<span class="hljs-string">&quot;vloge&quot;</span>)
+</code></pre>
+</li>
+</ul>
+</span>
+</section>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="16" data-marpit-fragments="1" data-style="@import url('style.css')" lang="sl-SI" style="--style:@import url('style.css');">
+<h1 id="zahtevnej%C5%A1e-poizvedbe">Zahtevnejše poizvedbe</h1>
+<ul>
+<li data-marpit-fragment="1">Z razredoma <code>django.db.models.F</code> in <code>django.db.models.Q</code> lahko sestavljamo izraze, ki predstavljajo stolpce oziroma pogoje.<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python"><span class="hljs-keyword">from</span> django.db.models <span class="hljs-keyword">import</span> F, Q
+
+<span class="hljs-comment"># Filmi, ki so zaslužili vsaj 100 mio dolarjev na oceno</span>
+<span class="hljs-comment"># ali vsaj 5 mio dolarjev na minuto trajanja</span>
+Film.objects.annotate(
+  zasluzek_na_oceno=(F(<span class="hljs-string">&quot;zasluzek&quot;</span>) / F(<span class="hljs-string">&quot;ocena&quot;</span>)),
+  zasluzek_na_dolzino=(F(<span class="hljs-string">&quot;zasluzek&quot;</span>) / F(<span class="hljs-string">&quot;dolzina&quot;</span>))
+).<span class="hljs-built_in">filter</span>(
+  Q(zasluzek_na_oceno__gt=<span class="hljs-number">100_000_000</span>) |
+  Q(zasluzek_na_dolzino__gt=<span class="hljs-number">5_000_000</span>)
+)
+</code></pre>
+</li>
+</ul>
+</section>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="17" data-marpit-fragments="3" data-style="@import url('style.css')" lang="sl-SI" style="--style:@import url('style.css');">
+<h1 id="spreminjanje-objektov">Spreminjanje objektov</h1>
+<ul>
+<li data-marpit-fragment="1">Objektom lahko spreminjamo polja kot običajno:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">chuck.ime = <span class="hljs-string">&#x27;Chuck Norris (RIP)&#x27;</span>
+</code></pre>
+</li>
+<li data-marpit-fragment="2">Spremembe so lahko odvisne tudi od trenutnih podatkov v bazi (tudi, če jih nismo še prebrali):<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">film.ocena = F(<span class="hljs-string">&#x27;ocena&#x27;</span>) + <span class="hljs-number">1</span>
+</code></pre>
+</li>
+<li data-marpit-fragment="3">Spremembo v bazo zapišemo z metodo <code>save</code>.<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">chuck.save()
+film.save()
+</code></pre>
+</li>
+</ul>
+</section>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="18" data-marpit-fragments="4" data-style="@import url('style.css')" lang="sl-SI" style="--style:@import url('style.css');">
+<h1 id="transakcije">Transakcije</h1>
+<ul>
+<li data-marpit-fragment="1">Če ne določimo drugače, bo vsaka sprememba v bazi v svoji transakciji.</li>
+<li data-marpit-fragment="2">Lahko določimo, da se neko zaporedje ukazov izvede znotraj ene transakcije:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python"><span class="hljs-keyword">from</span> django.db <span class="hljs-keyword">import</span> transaction
+
+<span class="hljs-keyword">with</span> transaction.atomic():
+    <span class="hljs-comment"># ukazi, ki naj tvorijo transakcijo</span>
+</code></pre>
+</li>
+<li data-marpit-fragment="3">Kot transakcijo lahko določimo tudi celotno funkcijo:<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python"><span class="hljs-meta">@transaction.atomic</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">pogled</span>(<span class="hljs-params">request, ...</span>):
+    ...
+</code></pre>
+</li>
+<li data-marpit-fragment="4">POZOR: preklic transakcije (npr. ob napaki) ponastavi stanje v bazi, ne pa tudi v objektih!</li>
+</ul>
 <p><span class="hidden">{% endraw %}</span></p>
 </section>
 <script>!function(){"use strict";const t={h1:{proto:()=>HTMLHeadingElement,attrs:{role:"heading","aria-level":"1"},style:"display: block; font-size: 2em; margin-block-start: 0.67em; margin-block-end: 0.67em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h2:{proto:()=>HTMLHeadingElement,attrs:{role:"heading","aria-level":"2"},style:"display: block; font-size: 1.5em; margin-block-start: 0.83em; margin-block-end: 0.83em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h3:{proto:()=>HTMLHeadingElement,attrs:{role:"heading","aria-level":"3"},style:"display: block; font-size: 1.17em; margin-block-start: 1em; margin-block-end: 1em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h4:{proto:()=>HTMLHeadingElement,attrs:{role:"heading","aria-level":"4"},style:"display: block; margin-block-start: 1.33em; margin-block-end: 1.33em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h5:{proto:()=>HTMLHeadingElement,attrs:{role:"heading","aria-level":"5"},style:"display: block; font-size: 0.83em; margin-block-start: 1.67em; margin-block-end: 1.67em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},h6:{proto:()=>HTMLHeadingElement,attrs:{role:"heading","aria-level":"6"},style:"display: block; font-size: 0.67em; margin-block-start: 2.33em; margin-block-end: 2.33em; margin-inline-start: 0px; margin-inline-end: 0px; font-weight: bold;"},span:{proto:()=>HTMLSpanElement},pre:{proto:()=>HTMLElement,style:"display: block; font-family: monospace; white-space: pre; margin: 1em 0; --marp-auto-scaling-white-space: pre;"}},e="data-marp-auto-scaling-wrapper",i="data-marp-auto-scaling-svg",n="data-marp-auto-scaling-container";class s extends HTMLElement{container;containerSize;containerObserver;svg;svgComputedStyle;svgPreserveAspectRatio="xMinYMid meet";wrapper;wrapperSize;wrapperObserver;constructor(){super();const t=t=>([e])=>{const{width:i,height:n}=e.contentRect;this[t]={width:i,height:n},this.updateSVGRect()};this.attachShadow({mode:"open"}),this.containerObserver=new ResizeObserver(t("containerSize")),this.wrapperObserver=new ResizeObserver((...e)=>{t("wrapperSize")(...e),this.flushSvgDisplay()})}static get observedAttributes(){return["data-downscale-only"]}connectedCallback(){this.shadowRoot.innerHTML=`\n<style>\n  svg[${i}] { display: block; width: 100%; height: auto; vertical-align: top; }\n  span[${n}] { display: table; white-space: var(--marp-auto-scaling-white-space, nowrap); width: max-content; }\n</style>\n<div ${e}>\n  <svg part="svg" ${i}>\n    <foreignObject><span ${n}><slot></slot></span></foreignObject>\n  </svg>\n</div>\n    `.split(/\n\s*/).join(""),this.wrapper=this.shadowRoot.querySelector(`div[${e}]`)??void 0;const t=this.svg;this.svg=this.wrapper?.querySelector(`svg[${i}]`)??void 0,this.svg!==t&&(this.svgComputedStyle=this.svg?window.getComputedStyle(this.svg):void 0),this.container=this.svg?.querySelector(`span[${n}]`)??void 0,this.observe()}disconnectedCallback(){this.svg=void 0,this.svgComputedStyle=void 0,this.wrapper=void 0,this.container=void 0,this.observe()}attributeChangedCallback(){this.observe()}flushSvgDisplay(){const{svg:t}=this;t&&(t.style.display="inline",requestAnimationFrame(()=>{t.style.display=""}))}observe(){this.containerObserver.disconnect(),this.wrapperObserver.disconnect(),this.wrapper&&this.wrapperObserver.observe(this.wrapper),this.container&&this.containerObserver.observe(this.container),this.svgComputedStyle&&this.observeSVGStyle(this.svgComputedStyle)}observeSVGStyle(t){const e=()=>{const i=(()=>{const e=t.getPropertyValue("--preserve-aspect-ratio");if(e)return e.trim();return`x${(({textAlign:t,direction:e})=>{if(t.endsWith("left"))return"Min";if(t.endsWith("right"))return"Max";if("start"===t||"end"===t){let i="rtl"===e;return"end"===t&&(i=!i),i?"Max":"Min"}return"Mid"})(t)}YMid meet`})();i!==this.svgPreserveAspectRatio&&(this.svgPreserveAspectRatio=i,this.updateSVGRect()),t===this.svgComputedStyle&&requestAnimationFrame(e)};e()}updateSVGRect(){let t=Math.ceil(this.containerSize?.width??0);const e=Math.ceil(this.containerSize?.height??0);void 0!==this.dataset.downscaleOnly&&(t=Math.max(t,this.wrapperSize?.width??0));const i=this.svg?.querySelector(":scope > foreignObject");if(i?.setAttribute("width",`${t}`),i?.setAttribute("height",`${e}`),this.svg&&(this.svg.setAttribute("viewBox",`0 0 ${t} ${e}`),this.svg.setAttribute("preserveAspectRatio",this.svgPreserveAspectRatio),this.svg.style.height=t<=0||e<=0?"0":""),this.container){const t=this.svgPreserveAspectRatio.toLowerCase();this.container.style.marginLeft=t.startsWith("xmid")||t.startsWith("xmax")?"auto":"0",this.container.style.marginRight=t.startsWith("xmi")?"auto":"0"}}}const r=(t,{attrs:e={},style:i})=>class extends t{constructor(...t){super(...t);for(const[t,i]of Object.entries(e))this.hasAttribute(t)||this.setAttribute(t,i);this._shadow()}static get observedAttributes(){return["data-auto-scaling"]}connectedCallback(){this._update()}attributeChangedCallback(){this._update()}_shadow(){if(!this.shadowRoot)try{this.attachShadow({mode:"open"})}catch(t){if(!(t instanceof Error&&"NotSupportedError"===t.name))throw t}return this.shadowRoot}_update(){const t=this._shadow();if(t){const e=i?`<style>:host { ${i} }</style>`:"";let n="<slot></slot>";const{autoScaling:s}=this.dataset;if(void 0!==s){n=`<marp-auto-scaling exportparts="svg:auto-scaling" ${"downscale-only"===s?"data-downscale-only":""}>${n}</marp-auto-scaling>`}t.innerHTML=e+n}}};let o;const a=Symbol(),l=()=>o??(o=!!document.createElement("div",{is:"marp-auto-scaling"}).outerHTML.startsWith("<div is"),o);let c;const d="marpitSVGPolyfill:setZoomFactor,",h=Symbol(),g=Symbol();const p=()=>{const t="Apple Computer, Inc."===navigator.vendor,e=t?[v]:[],i={then:e=>(t?(async()=>{if(void 0===c){const t=document.createElement("canvas");t.width=10,t.height=10;const e=t.getContext("2d"),i=new Image(10,10),n=new Promise(t=>{i.addEventListener("load",()=>t())});i.crossOrigin="anonymous",i.src="data:image/svg+xml;charset=utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%201%201%22%3E%3CforeignObject%20width%3D%221%22%20height%3D%221%22%20requiredExtensions%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxhtml%22%3E%3Cdiv%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxhtml%22%20style%3D%22width%3A%201px%3B%20height%3A%201px%3B%20background%3A%20red%3B%20position%3A%20relative%22%3E%3C%2Fdiv%3E%3C%2FforeignObject%3E%3C%2Fsvg%3E",await n,e.drawImage(i,0,0),c=e.getImageData(5,5,1,1).data[3]<128}return c})().then(t=>{null==e||e(t?[v]:[])}):null==e||e([]),i)};return Object.assign(e,i)};let m,u;function v(t){const e="object"==typeof t&&t.target||document,i="object"==typeof t?t.zoom:t;window[g]||(Object.defineProperty(window,g,{configurable:!0,value:!0}),document.body.style.zoom=1.0001,document.body.offsetHeight,document.body.style.zoom=1,window.addEventListener("message",({data:t,origin:e})=>{if(e===window.origin)try{if(t&&"string"==typeof t&&t.startsWith(d)){const[,e]=t.split(","),i=Number.parseFloat(e);Number.isNaN(i)||(u=i)}}catch(t){console.error(t)}}));let n=!1;Array.from(e.querySelectorAll("svg[data-marpit-svg]"),t=>{var e,s,r,o;t.style.transform||(t.style.transform="translateZ(0)");const a=i||u||t.currentScale||1;m!==a&&(m=a,n=a);const l=t.getBoundingClientRect(),{length:c}=t.children;for(let i=0;i<c;i+=1){const n=t.children[i];if(n.getScreenCTM){const t=n.getScreenCTM();if(t){const i=null!==(s=null===(e=n.x)||void 0===e?void 0:e.baseVal.value)&&void 0!==s?s:0,c=null!==(o=null===(r=n.y)||void 0===r?void 0:r.baseVal.value)&&void 0!==o?o:0,d=n.children.length;for(let e=0;e<d;e+=1){const s=n.children[e];if("SECTION"===s.tagName){const{style:e}=s;e.transformOrigin||(e.transformOrigin=`${-i}px ${-c}px`),e.transform=`scale(${a}) matrix(${t.a}, ${t.b}, ${t.c}, ${t.d}, ${t.e-l.left}, ${t.f-l.top}) translateZ(0.0001px)`;break}}}}}}),!1!==n&&Array.from(e.querySelectorAll("iframe"),({contentWindow:t})=>{null==t||t.postMessage(`${d}${n}`,"null"===window.origin?"*":window.origin)})}function w({once:t=!1,target:e=document}={}){const i=function(t=document){if(t[h])return t[h];let e=!0;const i=()=>{e=!1,delete t[h]};Object.defineProperty(t,h,{configurable:!0,value:i});let n=[],s=!1;(async()=>{try{n=await p()}finally{s=!0}})();const r=()=>{for(const e of n)e({target:t});s&&0===n.length||e&&window.requestAnimationFrame(r)};return r(),i}(e);return t?(i(),()=>{}):i}m=1,u=void 0;const b=Symbol(),y=(e=document)=>{if("undefined"==typeof window)throw new Error("Marp Core's browser script is valid only in browser context.");if(((e=document)=>{const i=window[a];i||customElements.define("marp-auto-scaling",s);for(const n of Object.keys(t)){const s=`marp-${n}`,o=t[n].proto();l()&&o!==HTMLElement?i||customElements.define(s,r(o,{style:t[n].style}),{extends:n}):(i||customElements.define(s,r(HTMLElement,t[n])),e.querySelectorAll(`${n}[is="${s}"]`).forEach(t=>{t.outerHTML=t.outerHTML.replace(new RegExp(`^<${n}`,"i"),`<${s}`).replace(new RegExp(`</${n}>$`,"i"),`</${s}>`)}))}window[a]=!0})(e),e[b])return e[b];const i=w({target:e}),n=()=>{i(),delete e[b]},o=Object.assign(n,{cleanup:n,update:()=>y(e)});return Object.defineProperty(e,b,{configurable:!0,value:o}),o},f=document.currentScript;y(f?f.getRootNode():document)}();
