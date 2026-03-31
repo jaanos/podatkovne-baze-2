@@ -288,4 +288,58 @@ style: "@import url('style.css')"
   ```
 * POZOR: preklic transakcije (npr. ob napaki) ponastavi stanje v bazi, ne pa tudi v objektih!
 
+---
+
+# Avtentikacija
+
+* Django ima že vgrajeno podporo za avtentikacijo, ki jo lahko vključimo med poti, npr.
+  ```python
+  path("accounts/", include("django.contrib.auth.urls")),
+  ```
+* Podprti so sledeči pogledi:
+  - `login`: prijava
+  - `logout`: odjava
+  - `password_change`: menjava gesla
+  - `password_reset`: ponastavitev gesla
+* Za ustrezno uporabo je potrebna dodatna konfiguracija!
+
+---
+
+# Prijava in odjava
+
+* Za prijavno stran je potrebno pripraviti predlogo `registration/login.html`.
+* Ta mora vsebovati obrazec, ki z metodo `POST` pošlje podatke na pogled `login`, in vsebuje:
+  - `{% csrf_token %}`,
+  - polje za uporabniško ime z imenom `{{ form.username.html_name }}`
+  - polje za geslo z imenom `{{ form.password.html_name }}`, ter
+  - skrito polje `next` z vrednostjo `{{ next }}`.
+
+---
+
+# Uporabniki in pravice
+
+<span class="small">
+
+* V pogledih lahko do uporabnika dostopamo preko objekta `request.user`.
+* V predlogah lahko do uporabnika dostopamo preko spremenljivke `user`, npr.
+  ```jinja
+  {% if user.authenticated %}
+  Pozdravljen, {{ user.username }}!
+  {% endif %}
+  ```
+* Vsak model ima privzeto določene pravice `add`, `change`, `delete`, `view`, ki jih lahko dodeljujemo uporabnikom.
+* Preko `request.user.has_perm` lahko preverimo, ali ima trenutni uporabnik ustrezne pravice:
+  ```python
+  if request.user.has_perm('app.add_model'):
+      ...
+  ```
+* V predlogah lahko uporabimo spremenljivko `perms`:
+  ```jinja
+  {% if perms.app.add_model %}
+  <!-- uporabnik lahko dodaja objekte za dani model -->
+  {% endif %}
+  ```
+
+</span>
+
 <span class="hidden">{% endraw %}</span>
