@@ -36,13 +36,11 @@
                                 Poišči dobre filme
                             </a>
 
-                            {% comment %}
-                            % if uporabnik.admin:
+                            {% if perms.filmiapp.add_film %}
                             <a href="/filmi/dodaj/" class="navbar-item">
                                 Dodaj film
                             </a>
-                            % end
-                            {% endcomment %}
+                            {% endif %}
                         </div>
                     </div>
 
@@ -62,38 +60,37 @@
                 <div class="navbar-end">
                     <div class="navbar-item">
                         <div class="buttons">
-                            {% comment %}
-                            % if uporabnik:
+                            {% if user.is_authenticated %}
                             <a class="button is-static is-ghost">
-                                <strong>{{uporabnik}}</strong>
+                                <strong>{{user}}</strong>
                             </a>
-                            <form action="/odjava/" method="POST">
+                            <form action="{% url 'logout' %}" method="POST">
+                                {% csrf_token %}
                                 <button class="button is-primary">
                                     Odjava
                                 </button>
                             </form>
-                            % else:
+                            {% else %}
                             <a href="/registracija/" class="button is-primary">
                                 <strong>Registracija</strong>
                             </a>
-                            <a href="/prijava/" class="button is-light">
+                            <a href="{% url 'login' %}" class="button is-light">
                                 Prijava
                             </a>
-                            % end
-                            {% endcomment %}
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
         </nav>
-        {% comment %}
-        % if sporocilo:
-        <div class="notification is-danger is-light">
+        {% block sporocilo %}
+        {% for message in messages %}
+        <div class="notification is-{{ message.tags }} is-light">
             <button class="delete"></button>
-            {{sporocilo}}
+            {{ message }}
         </div>
-        % end
-        {% endcomment %}
+        {% endfor %}
+        {% endblock %}
         <section class="section">
             <div class="container">
                 {% block vsebina %}{% endblock %}
