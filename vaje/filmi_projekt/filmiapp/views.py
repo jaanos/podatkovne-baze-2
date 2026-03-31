@@ -1,5 +1,7 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
+from django.shortcuts import redirect, render, get_object_or_404
+from django.db import transaction
+from django.contrib.auth import login
+from django.contrib.auth.forms import UserCreationForm
 from .models import Film
 
 """
@@ -11,6 +13,7 @@ def test(request):
 def index(request):
     return render(request, 'filmiapp/index.html', {})
 
+
 def film_podrobnosti(request, film_id):
     film = get_object_or_404(Film, id=film_id)
     polja = film._meta.get_fields()[2:] # Prvi dve polji sta vloga in id, ki nas ne zanimata
@@ -18,8 +21,25 @@ def film_podrobnosti(request, film_id):
     kontekst = {'film' : str(film), 'podrobnosti' : podrobnosti}
     return render(request, 'filmiapp/film_podrobnosti.html', kontekst)
 
+
 def film_najboljsi(request, st_najboljsih):
     najboljsi = Film.objects.order_by('-ocena')[:st_najboljsih]
     info_najboljsi = [(f.id, f.naslov, f.ocena) for f in najboljsi]
     kontekst = {'info_najboljsi' : info_najboljsi, 'stevilo' : st_najboljsih}
     return render(request, 'filmiapp/film_najboljsi.html', kontekst)
+
+
+@transaction.atomic
+def registracija(request):
+    if request.user.is_authenticated:
+        return redirect('filmiapp:index')
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            login(request, form.instance)
+            return redirect('filmiapp:index')
+    else:
+        form = UserCreationForm()
+    kontekst = {'form': form}
+    return render(request, 'registration/registration.html', kontekst)

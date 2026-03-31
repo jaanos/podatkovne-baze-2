@@ -313,6 +313,19 @@ style: "@import url('style.css')"
   - polje za uporabniško ime z imenom `{{ form.username.html_name }}`
   - polje za geslo z imenom `{{ form.password.html_name }}`, ter
   - skrito polje `next` z vrednostjo `{{ next }}`.
+* Za odjavo pošljemo obrazec z metodo `POST` na pogled `logout`.
+
+---
+
+# Registracija
+
+* Za registracijo moramo poskrbeti sami.
+* Pomagamo si lahko z obrazcem `django.contrib.auth.forms.UserCreationForm`.
+  * Obrazec ustvarimo iz objekta `request.POST`, ali pa brez argumentov za prazen obrazec.
+  * Obrazec vsebuje polja `username`, `password1` in `password2`.
+  * Z metodo `is_valid` preverimo, ali so vpisani podatki veljavni.
+  * Z metodo `save` shranimo obrazec in tako ustvarimo uporabnika.
+  * Obrazec podamo v kontekstu, da lahko do njega v predlogi dostopamo preko spremenljivke `form`.
 
 ---
 

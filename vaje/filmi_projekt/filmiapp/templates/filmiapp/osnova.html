@@ -71,7 +71,7 @@
                                 </button>
                             </form>
                             {% else %}
-                            <a href="/registracija/" class="button is-primary">
+                            <a href="{% url 'registration' %}" class="button is-primary">
                                 <strong>Registracija</strong>
                             </a>
                             <a href="{% url 'login' %}" class="button is-light">
