@@ -35,7 +35,9 @@
                             <a href="{% url 'filmiapp:film_najboljsi' 10 %}" class="navbar-item">
                                 Poišči dobre filme
                             </a>
-
+                            <a href="{% url 'filmiapp:film_poisci' %}" class="navbar-item">
+                                Poišči poljubne filme
+                            </a>
                             {% if perms.filmiapp.add_film %}
                             <a href="/filmi/dodaj/" class="navbar-item">
                                 Dodaj film

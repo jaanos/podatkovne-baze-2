@@ -6,7 +6,15 @@
     <h1>{{ film }}</h1>
     <ul>
         {% for ime, vrednost in podrobnosti %}
-        <li>{{ime}} : {{vrednost}}</li>
+        <li>{{ime}}: {{vrednost}}</li>
         {% endfor %}
     </ul>
+
+    <form action="{% url 'filmiapp:film_glasuj' %}" method="POST">
+        {% csrf_token %}
+            <input type="hidden" name="film_id" value="{{film.id}}">
+            <button class="button is-success">
+                Glasuj za ta film
+            </button>
+    </form>
 {% endblock %}

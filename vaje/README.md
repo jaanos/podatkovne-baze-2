@@ -229,4 +229,84 @@ Zgornji element seznama tako postane:
 
 `<li><a href="{% url 'filmiapp:film_podrobnosti' id %}">{{naslov}}</a>: {{ocena}}</li>`
 
+# Predavanja med 5. in 6. vajami
+
+## Dedovanje predlog
+
+Na predavanjih so bile naše predloge iz vaj izboljšane. In sicer, skupni HTML, ki se ves čas ponavlja je bil premaknjen v `osnova.html`, v katerem s pomočjo `{% block ime_bloka %}` in `{% endblock %}` značk definiramo bloke kode, ki jih lahko v ostalih predlogah prepišemo. Dodatno je bil HTML močno izboljšan s pomočjo [Bulma CSS](https://bulma.io/)\
+
+V naših predlogah od prej, npr. `podrobnosti.html` potem najprej označimo, da dedujemo iz `osnova.html` z `{% extends osnovna_predloga %}` in definiramo kaj naj se pojavi v posameznih `{% block ime_bloka %}` značkah.
+
+## Dodatne stvari v osnova.html
+
+V nadaljevanju ste izkoristili funkcionalnosti aplikacij, ki so že v Django-tu (spomnimo se na `INSTALLED_APPS` v `settings.py`).
+Med drugim ste link na "dodaj film" (ki zaenkrat še ne obstaja) skrili pod značko `{% if perms.filmiapp.add_film %}` - ta link lahko vidijo torej le uporabniki, ki imajo dovoljenje za dodajanje filma (npr. administratorji).
+Z `{% if user.is_authenticated %}`, preverimo ali je uporabnim sploh prijavljen.
+Podobno opazimo tudi `{% for message in messages %}`, ki spet uporablja eno izmed Djangotovih aplikacij za sporočila/opozorila (bomo še videli v praksi).
+
+
+## Dodajanje prijave, odjave in registracije.
+
+V `urls.py` ste dodali pot `accounts` do te aplikacije. To nam da dostop do login, password_change, password_reset in podobno.
+Konkretno ste `login.html` dodali v `templates/registration`.
+`login.html` spet razširi `osnova.html`, nova stvar je značka `{% block.super %}` s pomočjo katerih blokov ne prepišemo ampak jih le razširimo (če so bili morda že v osnovi neprazni).
+Za samo prijavo uporabimo seveda HTML-jeve <form></form> značke s katerimo naredimo POST request, kjer je action enak poti z imenom `login`. Vnosna polja, ki morajo biti prisotna s določenimi imeni ste omenjali na predavanjih. Ne smemo pozabiti na `{% csrf_token %}`, ki mora biti vedno prisotna v primeru POST (sicer se Django pritoži) - ta značka izboljša [varnost naše strani](https://en.wikipedia.org/wiki/Cross-site_request_forgery).\
+
+"Odjava" je le gumb (ki se prikaže le, če smo prijavljeni), ki pošlje POST request na pot z imenom logout.
+
+Podobno ste naredili tudi predlogo za registracijo, kjer ste ročno dodali še primerni pogled. Tu ste uporabili funkcijo `redirect(ime)`, ki po POST requestu preusmeri uporabnika na pot z danim imenom - zelo pogosta praksa [post - redirect -get](https://en.wikipedia.org/wiki/Post/Redirect/Get).
+
+# 6. Vaje
+
+Na 6. vajah smo se še naprej lotevali obrazcev (angl. forms), kar ste sicer že delali na predavanjih.
+
+## Iskanje želenega filma
+
+Za začetek smo dodali stran, s pomočjo katere poiščemo poljuben film (zaenkrat jih lahko najdemo le preko seznama najboljših ali pa direkt preko id-ja, kar ni praktično).\
+
+### pogled
+
+Začnemo s tem, da naredimo nov pogled `film_poisci`, kjer najprej preberemo iskan film (ki bo GET request, saj ne spreminjamo ničesar na strežniku, ampak le pridobivamo podatke). To predstavlja vrstica
+`poizvedba = request.GET.get('zacetek', '')`.\
+
+`request.GET` je podoben Python-ovem slovarju in bi v resnici lahko poizvedbo dobili tudi kot indeksiranje z [], vendar je .get() metoda varnejša, saj lahko kot 2. argument podamo privzeto vrednost, v primeru da ključa `zacetek` (začetek filma) ni v slovarju.\
+
+Če `zacetek` ni prazen, filme, ki mu ustrezajo dobimo preko Managerja z 
+`Film.objects.filter(naslov__istartswith=poizvedba)[:100]`, ki vrne filme, ki se začnejo z nizom `poizvedba` (i pri `istartswith` pomeni, da nas ne zanimajo velike in male začetnice - čeprav pri naši trenutni konfiguraciji začetnice niso važne tudi, če uporabimo `naslov__startswith`). Da nimamo prevelikega seznama, smo število filmov omejili na 100 (rezultat je lahko ogromen, če bi npr. nekdo v iskalnik unesel samo "t").\
+
+### Predloga
+
+Filmi, ki ustrezajo poizvedbi, ter samo poizvedbo potem podamo kot kontekst in prikažemo `filmiapp/film_poisci.html` - to predlogo pa moramo še spisati, seveda bo spet dedovala iz `osnova.html` - dodatno bomo to pot še dodali na navbar v `osnova.html`.
+
+Če je rezultat prisoten (`{% if poizvedba %}`), se zankamo čez filme in jih izpišemo, podobno kot v `film_najboljsi.html`.\
+
+Nad tem bomo imeli obrazec `<form>`, ki pošlje GET request na dan (kar isti) pogled. V obrazcu imamo `<input>` tipa text z imenom `zacetek`, kar se bo poslalo v našem GET requestu. Ker ger za GET in ne POST request, `{% csrf_token %}` ni potreben. Spet smo uporabili podobne classe kot ste jih na predavanjih pri npr. `login.html`.
+
+## Glasovanje za film
+
+Dodali smo še funkcionalnost glasovanja za film. Če se spomnimo - glasovi so bili eni izmed polj od Film. Nekateri filmi jih že imajo, delamo pa se, da morda lahko uporabnik še dodatno glasuje za želene filme (zaenkrat dovolimo, da isti uporabnik glasuje večkrat).
+
+### Spremembe v predlogi 
+
+Gumb za glasovanje bomo dodali kar na `film_podrobnosti.html`. Pod podatke o filmu dodamo obrazec, ki ima tokrat `method="POST"` (saj spreminjamo podatke v podatkovni bazi) in pošlje informacije na `filmiapp:film_glasuj` (to pot bomo še naredili in povezali na primeren pogled). V obrazcu bo en sam gumb "Glasuj". Ker pa želimo podati še informacijo o id-ju filma, za katerega glasujemo, je prisoten še input element z tipom `hidden`, ki to informacijo posreduje (to ni edini način, nehigienično bi lahko id celo podali kot parameter v url-ju, kot smo to v naredili v `film_podrobnosti`). Seveda ne smemo pozabiti na `{% csrf_token %}`, saj gre za POST request.
+
+### Pogled
+
+V pogledu `film_glasuj` najprej preverimo, če je tip requesta res enak "POST". Če da, poskusimo dobiti film z danim id-jem in povečati število glasov za 1.
+To storimo z
+`film.glasovi = F('glasovi') + 1`
+F (in Q) ste omenjali na predavanjih. V tem primeru je to priročen način za prebiranje in spreminjanje polja v enem samem stavku (zato tudi ne rabimo `atomic.transaction`).\
+
+Da uporabniko jasno prikažemo, da je šlo vse v redu uporabimo še Djangotov messages za obvestila (kot prej omenjeno):
+`messages.success(request, "Vaš glas je bil zabeležen!")`, kar bo povzročilo, da se prikaže zeleno ("success") obvestilo z danim tekstom.\
+
+Na koncu kot prej uporabimo še `redirect`, da se vrnemo na pot z imenom `filmiapp:film_podrobnost` z film_id `film_id` (redirect zna avtomatsko ime poti takole povezati z integer parametrom, da se izognemo hardcode-anju poti).\
+
+Kaj pa, če uporabnik nekako pride na to stran navadno (preko metode GET)? Tega seveda nočemo - ta pogled je samo za glasovanje. Na npr. [Wikipediji](https://en.wikipedia.org/wiki/List_of_HTTP_status_codeshttps://en.wikipedia.org/wiki/List_of_HTTP_status_codes) preverimo, da je v tem primeru pravilno vrniti kodo za napako 405. V Django-tu to pomeni, da enostavno vrnemo:
+`return HttpResponseNotAllowed(['POST'])`, kjer so v argumentu le dovoljeni (v našem primeru POST) requesti.\
+
+Za na konec - smiselno se zdi, da lahko le prijavljeni uporabniki glasujejo. To preprosto dosežemo tako, da nad naš pogled dodamo dekorator `@login_required`, ki seveda prav tako uporablja Djangotovo aplikacijo za avtentikacijo. Če sedaj pridemo na ta pogled in nismo prijavljeni, nas bo vrglo na stran za prijavo.
+
+
+
 {% endraw %}
