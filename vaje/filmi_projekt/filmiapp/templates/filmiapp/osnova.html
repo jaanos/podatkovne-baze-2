@@ -39,7 +39,7 @@
                                 Poišči poljubne filme
                             </a>
                             {% if perms.filmiapp.add_film %}
-                            <a href="/filmi/dodaj/" class="navbar-item">
+                            <a href="{% url 'filmiapp:film_dodaj' %}" class="navbar-item">
                                 Dodaj film
                             </a>
                             {% endif %}

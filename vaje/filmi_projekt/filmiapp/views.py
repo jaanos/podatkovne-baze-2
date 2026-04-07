@@ -7,6 +7,7 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.decorators import login_required
 from .models import Film
+from .forms import FilmForm
 
 """
 Testni pogled, ki smo ga naredili samo za prvo demonstracijo pogledov
@@ -49,6 +50,18 @@ def film_glasuj(request):
         messages.success(request, "Vaš glas je bil zabeležen!")
         return redirect('filmiapp:film_podrobnosti', film_id)
     return HttpResponseNotAllowed(['POST'])
+
+@login_required
+def film_dodaj(request):
+    if request.method == "POST":
+        form = FilmForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('filmiapp:index')
+    else:
+        form = FilmForm()
+    kontekst = {'form': form}
+    return render(request, 'filmiapp/film_dodaj.html', kontekst)
 
 @transaction.atomic
 def registracija(request):
