@@ -3,13 +3,13 @@
 {% block naslov %}Dodaj film{% endblock %}
 
 {% block vsebina %}
-<form action="{% url 'filmiapp:film_dodaj' %}" method="POST">
+<form action="{% url 'filmiapp:film_uredi' form.instance.pk %}" method="POST">
     {% csrf_token %}
     {{ form }}
     <div class="field">
         <p class="control">
             <button class="button is-success">
-                Dodaj film
+                Posodobi film
             </button>
         </p>
     </div>

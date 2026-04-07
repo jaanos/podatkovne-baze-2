@@ -9,5 +9,6 @@ urlpatterns = [
     path('najboljsi/<int:st_najboljsih>', views.film_najboljsi, name='film_najboljsi'),
     path('film_poisci', views.film_poisci, name='film_poisci'),
     path('film_dodaj', views.film_dodaj, name='film_dodaj'),
+    path('film_uredi/<int:film_id>', views.film_uredi, name='film_uredi'),
     path('glasuj', views.film_glasuj, name='film_glasuj'),
 ]

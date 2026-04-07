@@ -3,18 +3,57 @@
 {% block naslov %}{{ film }}{% endblock %}
 
 {% block vsebina %}
-    <h1>{{ film }}</h1>
-    <ul>
-        {% for ime, vrednost in podrobnosti %}
-        <li>{{ime}}: {{vrednost}}</li>
-        {% endfor %}
-    </ul>
+<div class="level">
+    <div class="level-left">
+        <div class="level-item">
+            <h1 class="title">{{ film.naslov }} ({{ film.leto }})</h1>
+        </div>
+    </div>
+    <div class="level-right">
+        {% if perms.filmiapp.change_film %}
+        <div class="level-item">
+            <a href="{% url 'filmiapp:film_uredi' film.pk %}" class="button is-primary">Uredi</a>
+        </div>
+        {% endif %}
+        {% if perms.filmiapp.delete_film %}
+        <div class="level-item">
+            <form action="/filmi/izbrisi/{{ film.pk }}/" method="POST">
+                <button class="button is-danger" onclick="return confirm('Ali želiš res izbrisati film z ID-jem {{film.id}}?')">Izbriši</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
 
-    <form action="{% url 'filmiapp:film_glasuj' %}" method="POST">
-        {% csrf_token %}
-            <input type="hidden" name="film_id" value="{{film.id}}">
-            <button class="button is-success">
-                Glasuj za ta film
-            </button>
-    </form>
+<div class="block">
+    <ul>
+        <li>Dolžina: {{ film.dolzina }} minut</li>
+        <li>Ocena: {{ film.ocena }}/10</li>
+        {% if film.metascore %}
+        <li>Metascore: {{ film.metascore }}</li>
+        {% endif %}
+        <li>Glasovi: {{ film.glasovi }}</li>
+        {% if film.zasluzek %}
+        <li>Zaslužek: {{ film.zasluzek }}</li>
+        {% endif %}
+        {% if film.oznaka %}
+        <li>Oznaka: {{ film.oznaka }}</li>
+        {% endif %}
+    </ul>
+</div>
+
+{% if film.opis %}
+<div class="block">
+    <h2 class="subtitle">Opis</h2>
+    <p>{{ film.opis }}</p>
+</div>
+{% endif %}
+
+<form action="{% url 'filmiapp:film_glasuj' %}" method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="film_id" value="{{film.id}}">
+    <button class="button is-success">
+        Glasuj za ta film
+    </button>
+</form>
 {% endblock %}

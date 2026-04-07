@@ -5,7 +5,7 @@ from django.db.models import F
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from .models import Film
 from .forms import FilmForm
 
@@ -51,17 +51,32 @@ def film_glasuj(request):
         return redirect('filmiapp:film_podrobnosti', film_id)
     return HttpResponseNotAllowed(['POST'])
 
-@login_required
+@permission_required('filmiapp.add_film')
+@transaction.atomic
 def film_dodaj(request):
     if request.method == "POST":
         form = FilmForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('filmiapp:index')
+            return redirect('filmiapp:film_podrobnosti', film_id=form.instance.pk)
     else:
         form = FilmForm()
     kontekst = {'form': form}
     return render(request, 'filmiapp/film_dodaj.html', kontekst)
+
+@permission_required('filmiapp.change_film')
+@transaction.atomic
+def film_uredi(request, film_id):
+    film = get_object_or_404(Film, id=film_id)
+    if request.method == "POST":
+        form = FilmForm(request.POST, instance=film)
+        if form.is_valid():
+            form.save()
+            return redirect('filmiapp:film_podrobnosti', film_id=form.instance.pk)
+    else:
+        form = FilmForm(instance=film)
+    kontekst = {'form': form}
+    return render(request, 'filmiapp/film_uredi.html', kontekst)
 
 @transaction.atomic
 def registracija(request):
@@ -72,6 +87,7 @@ def registracija(request):
         if form.is_valid():
             form.save()
             login(request, form.instance)
+            messages.success(request, f"Uporabnik {form.instance.username} uspešno registriran!")
             return redirect('filmiapp:index')
     else:
         form = UserCreationForm()
