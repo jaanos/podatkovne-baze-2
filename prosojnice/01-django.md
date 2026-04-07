@@ -355,4 +355,21 @@ style: "@import url('style.css')"
 
 </span>
 
+---
+
+# Sporočila
+
+* Za sporočila lahko uporabljamo objekt `django.contrib.messages`.
+* Za različne tipe sporočil lahko uporabimo ustrezne metode.
+  ```python
+  from django.contrib import messages
+
+  messages.debug(request, "Sporočilo ob razhroščevanju")
+  messages.info(request, "Obvestilo")
+  messages.success(request, "Uspeh")
+  messages.warning(request, "Opozorilo")
+  messages.error(request, "Napaka")
+  ```
+* V predlogah lahko do sporočil dostopamo preko spremenljivke `messages`.
+
 <span class="hidden">{% endraw %}</span>
