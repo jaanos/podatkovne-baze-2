@@ -1,0 +1,33 @@
+{% extends "filmiapp/osnova.html" %}
+
+{% block naslov %}{{ oseba }}{% endblock %}
+
+{% block vsebina %}
+<div class="level">
+    <div class="level-left">
+        <div class="level-item">
+            <h1 class="title">{{ oseba.ime }}</h1>
+        </div>
+    </div>
+    <div class="level-right">
+        {% if perms.filmiapp.change_oseba %}
+        <div class="level-item">
+            <a href="{% url 'filmiapp:oseba_uredi' oseba.pk %}" class="button is-primary">Uredi</a>
+        </div>
+        {% endif %}
+        {% if perms.filmiapp.delete_oseba %}
+        <div class="level-item">
+            <form action="/filmi/izbrisi/{{ oseba.pk }}/" method="POST">
+                <button class="button is-danger" onclick="return confirm('Ali želiš res izbrisati osebo z ID-jem {{oseba.id}}?')">Izbriši</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="block">
+    <ul>
+        <li>Ime in priimek: {{ oseba.ime }}</li>
+    </ul>
+</div>
+{% endblock %}

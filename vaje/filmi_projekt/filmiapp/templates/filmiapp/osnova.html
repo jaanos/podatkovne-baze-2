@@ -52,9 +52,15 @@
                         </a>
                 
                         <div class="navbar-dropdown">
-                            <a href="/osebe/poisci/" class="navbar-item">
+                            <a href="{% url 'filmiapp:oseba_poisci' %}" class="navbar-item">
                                 Poišči osebo
                             </a>
+                            {% if perms.filmiapp.add_oseba %}
+                            <a href="{% url 'filmiapp:oseba_dodaj' %}" class="navbar-item">
+                                Dodaj osebo
+                            </a>
+                            {% endif %}
+
                         </div>
                     </div>
                 </div>

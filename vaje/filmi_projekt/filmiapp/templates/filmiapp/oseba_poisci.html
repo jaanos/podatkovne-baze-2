@@ -1,0 +1,31 @@
+{% extends "filmiapp/osnova.html" %}
+
+{% block naslov %}Poišči osebo{% endblock %}
+
+{% block vsebina %}
+<form method="GET">
+    <div class="field">
+        <label class="label">Poišči osebo</label>
+        <div class="control">
+            <input class="input" type="text" name="zacetek" value="{{ poizvedba }}" placeholder="Napiši začetek imena osebe (ime priimek)">
+        </div>
+    </div>
+    <div class="field">
+        <div class="control">
+            <button class="button is-success">Išči</button>
+        </div>
+    </div>
+</form>
+
+<hr>
+
+{% if rezultat %}
+    <ol>
+        {% for oseba in rezultat %}
+            <li><a href="{% url 'filmiapp:oseba_podrobnosti' oseba.id %}">{{ oseba }}</a></li>
+        {% endfor %}
+    </ol>
+{% elif poizvedba %}
+    <p>V bazi ni filma, ki bi se začel z {{ poizvedba }}!</p>
+{% endif %}
+{% endblock %}

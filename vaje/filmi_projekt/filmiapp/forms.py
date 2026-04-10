@@ -1,5 +1,5 @@
-from django.forms import ModelForm, TextInput, NumberInput, Select, Textarea
-from .models import Film
+from django.forms import ModelForm, TextInput, NumberInput, Select, Textarea, inlineformset_factory
+from .models import Film, Oseba, Vloga
 
 
 class BulmaFormMixin:
@@ -19,7 +19,13 @@ class BulmaFormMixin:
 class FilmForm(BulmaFormMixin, ModelForm):
     class Meta:
         model = Film
-        exclude = ["vloge"]
+        exclude = ['vloge']
         widgets = {
             "opis": Textarea()
         }
+
+class OsebaForm(BulmaFormMixin, ModelForm):
+    class Meta:
+        model = Oseba
+        fields = ['ime']
+

@@ -1,0 +1,17 @@
+{% extends "filmiapp/osnova.html" %}
+
+{% block naslov %}Dodaj osebo{% endblock %}
+
+{% block vsebina %}
+<form action="{% url 'filmiapp:oseba_dodaj' %}" method="POST">
+    {% csrf_token %}
+    {{ form }}
+    <div class="field">
+        <p class="control">
+            <button class="button is-success">
+                Dodaj osebo
+            </button>
+        </p>
+    </div>
+</form>
+{% endblock %}

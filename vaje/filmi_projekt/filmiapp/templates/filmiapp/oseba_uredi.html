@@ -1,0 +1,17 @@
+{% extends "filmiapp/osnova.html" %}
+
+{% block naslov %}Uredi osebo{% endblock %}
+
+{% block vsebina %}
+<form action="{% url 'filmiapp:oseba_uredi' form.instance.id %}" method="POST">
+    {% csrf_token %}
+    {{ form }}
+    <div class="field">
+        <p class="control">
+            <button class="button is-success">
+                Posodobi osebo
+            </button>
+        </p>
+    </div>
+</form>
+{% endblock %}
