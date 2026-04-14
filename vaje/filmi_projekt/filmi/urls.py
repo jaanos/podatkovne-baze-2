@@ -19,7 +19,7 @@ from django.urls import include, path
 from filmiapp.views import registracija
 
 urlpatterns = [
-    path('filmi/', include('filmiapp.urls')),
+    path('', include('filmiapp.urls')),
     path('admin/', admin.site.urls),
     path('accounts/', include("django.contrib.auth.urls")),
     path('accounts/registration/', registracija, name='registration'),

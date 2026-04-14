@@ -1,4 +1,16 @@
 {% raw %}
+# Navodila za prvo pripravo projekta iz nule
+
+Za projekt potrebujemo Django (`pip install django`).
+Po svežem kloniranju tega repozitorija, lahko stran pripravimo s sledečimi ukazi:
+- premaknemo se v mapo `filmi_projekt`.
+- Pripravimo podatkovno bazo `python manage.py migrate`
+- Podatkovno bazo napolnimo z:
+    - `python manage.py shell`
+    - `from filmiapp.napolni_bazo import main(); main()`
+    - z `python manage.py createsuperuser` si naredimo admin račun.
+- `python manage.py runserver` bi zdaj moral delati.
+
 # 2. Vaje
 
 Na 2. vajah smo naredili Django projekt in si pogledali nekaj osnov Django-ta
@@ -306,6 +318,47 @@ Kaj pa, če uporabnik nekako pride na to stran navadno (preko metode GET)? Tega 
 `return HttpResponseNotAllowed(['POST'])`, kjer so v argumentu le dovoljeni (v našem primeru POST) requesti.\
 
 Za na konec - smiselno se zdi, da lahko le prijavljeni uporabniki glasujejo. To preprosto dosežemo tako, da nad naš pogled dodamo dekorator `@login_required`, ki seveda prav tako uporablja Djangotovo aplikacijo za avtentikacijo. Če sedaj pridemo na ta pogled in nismo prijavljeni, nas bo vrglo na stran za prijavo.
+
+# 7. Vaje
+
+## Dodatek form za Oseba
+
+Na 7. Vajah smo za ponovitev vso mašinerijo (iskanje, dodajanje ipd.), ki jo imamo za filme, naredili še za osebe. V glavnem je zelo podobno (paziti moramo seveda pri npr. `filmiapp.perms.add_film`, ki postane npr. `filmiapp.perms.add_oseba`)
+
+Kot ste na predavanjih s pomočjo `ModelForm` naredili ``FilmForm`, smo na vajah naredili še (sicer kar trivialno, saj je samo eno polje) `OsebaForm`.
+V `Meta` moramo nujno povedati katera polja so vključena. Pri `FilmForm` smo enostavno rekli `exclude = ["vloge"]`, za katere smo se odločili, da jih ne bo, pri `OsebaForm` pa smo nasprotno povedali, kaj je vključeno: `fields = ["ime"]`. V tem primeru bi lahko rekli tudi `fields = '__all__'` (vse), vendar je varneje biti ekspliciten (morda bomo v prihodnje dodali še kaj polj).
+
+## Preprečevanje večkratnega glasovanja
+
+### Shranjevanje podatkov o glasovih 
+
+Drugi del vaj smo posvetili izboljšanju našega sistema glasovanja. Zadnjič smo namreč videli, da lahko uporabnik poljubnokrat glasuje za dan film. Če hočemo to preprečiti, si moramo shraniti informacijo o filmih, o katerih je dan uporabnik že glasoval. V ta namen smo v `models.py` dodali nov model (torej, tabelo v podatkovni bazi) `DaniGlasovi`, ki imajo dve polji - tuj ključ na `Film`, ter tuj ključ na `User` (uporabnik - ta model je že v Django-tu in ga importamo). Dodatno smo z `Meta` dodali še vez enoličnosti (hočemo, da se vsaka kombinacija filma in uporabnika pojavi največ enkrat).
+
+### Sprememba pogleda
+
+Naš pogled `film_glasuj` je do zdaj ob prejemu POST requesta povečal število glasov za dan film. V novi verziji želimo, da se to zgodi, le če dan uporabnik še ni glasoval, sicer pa glas odvzamemo.
+
+Ko dobimo POST request torej najprej izluščimo uporabnika z `request.user` in pokličemo že od prej znano:
+
+`glas, ustvarjen = DaniGlasovi.objects.get_or_create(uporabnik=user, film=film)`,
+ki vrne pripadajoč objekt `glas` (če je ta že v bazi, sicer ga pač ustvari). Spremenljivka `ustvarjen` je `True`, če je bil objekt na novo ustvarjen (kar pomeni, da še nismo glasovali za ta film).
+
+Če smo za film že glasovali, POST request pomeni odvzem glasa, torej zmanjšamo število glasov danega filma (z `F` kot zadnjič) in zbrišemo `glas` iz podatkovne baze.
+
+Če za film še nismo glasovali pa povečamo število glasov danega filma, pripadajoča vrstica v `DaniGlasovi` pa je itak že prisotna. V vsakem primeru pokličemo še `film.save()`. Ker imamo zdaj več operacij v tem pogledu, celoten pogled še ovijemo z `transaction.atomic` dekoratorjem.
+
+### Sprememba gumba glasuj
+
+Še zadnja sprememba se tiče predloge. Želimo, da se zelen gumb "glasuj" prikazuje le, če se nismo glasovali za film, sicer pa se prikaže rdeč gumb "odvzemi glas". To bomo naredili z značkami, kjer želimo značko tipa `{% if smo_glasovali %}`... Ker take značke ni, jo bomo [naredili](https://docs.djangoproject.com/en/6.0/howto/custom-template-tags/). V resnici bomo naredili "filter", kar lahko uporabljamo na podoben način kot značke (tags).
+
+V naši aplikaciji dodamo mapo `templatetags` v kateri je `__init__.py` (spet označimo, da gre za package) in `filmiapp_extras.py`, kjer bomo definirali dodatne značke.
+Dodatne značke, ki jih definiramo je treba registrirati. V ta namen mora biti v modulu nujno spremenljivka `register = template.Library()`.
+Definiramo funkcijo `je_glasoval(uporabnik, film)`, ki bo vrnila `True`, če je dan uporabnik že glasoval za dan film, za kar uporabimo kar uporabimo kar `DaniGlasovi.objects.filter(uporabnik=uporabnik, film=film).exists()`, kar preverja zgolj obstoj vrstice v tabeli (bolj učinkovito kot npr. `.all()`). Sicer je ta način vseeno neučinkovit (Tabela DaniGlasovi je morda ogromna in polna filmov in uporabnikov, ki nas ne zanimajo) - naslednjič bomo pokazali boljši pristop.
+
+ To funkcijo registriramo kar z dodajanjem dekoratorja `@register.filter`. Da bomo lahko to uporabili še v naši predlogi, moramo najprej na začetku predloge naše dodatne značke naložiti z:
+`{% load filmiapp_extras %}`, glasovanje pa potem lahko preverimo z `{% if user|je_glasoval:film %}` (torej ime funkcije gre v sredino, argumenta pa na obe strani).
+
+
 
 
 

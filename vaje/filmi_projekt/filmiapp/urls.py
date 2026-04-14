@@ -11,4 +11,8 @@ urlpatterns = [
     path('film_dodaj', views.film_dodaj, name='film_dodaj'),
     path('film_uredi/<int:film_id>', views.film_uredi, name='film_uredi'),
     path('glasuj', views.film_glasuj, name='film_glasuj'),
+    path('oseba_poisci', views.oseba_poisci, name='oseba_poisci'),
+    path('oseba/<int:oseba_id>', views.oseba_podrobnosti, name='oseba_podrobnosti'),
+    path('oseba_uredi/<int:oseba_id>', views.oseba_uredi, name='oseba_uredi'),
+    path('oseba_dodaj', views.oseba_dodaj, name='oseba_dodaj'),
 ]

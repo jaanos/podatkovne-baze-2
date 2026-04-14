@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class Oznaka(models.Model):
     kratica = models.CharField(max_length=10, primary_key=True, help_text="Kratica za oznako filma, npr. PG")
@@ -41,7 +42,6 @@ class Film(models.Model):
     opis = models.CharField(max_length=1000, blank=True, null=True, verbose_name="Opis filma", help_text="Opis filma, do 1000 znakov")
     zanri = models.ManyToManyField(Zanr, verbose_name="Žanri filma")
     vloge = models.ManyToManyField(Oseba, through="Vloga")
-
     def __str__(self):
         return f'{self.naslov}, {self.leto}'
     
@@ -71,3 +71,14 @@ class Vloga(models.Model):
             )
         ]
         verbose_name_plural = "Vloge"
+
+class DaniGlasovi(models.Model):
+    uporabnik = models.ForeignKey(User, on_delete=models.CASCADE)
+    film = models.ForeignKey(Film, on_delete=models.CASCADE)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["uporabnik", "film"],
+                name="enoličnost_glasa_za_film"
+            )
+        ]

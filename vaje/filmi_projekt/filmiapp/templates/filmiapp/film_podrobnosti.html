@@ -1,5 +1,5 @@
 {% extends "filmiapp/osnova.html" %}
-
+{% load filmiapp_extras %}
 {% block naslov %}{{ film }}{% endblock %}
 
 {% block vsebina %}
@@ -52,8 +52,15 @@
 <form action="{% url 'filmiapp:film_glasuj' %}" method="POST">
     {% csrf_token %}
     <input type="hidden" name="film_id" value="{{film.id}}">
+    {% if user|je_glasoval:film %}
+    <button class="button is-danger">
+        Odstrani svoj glas
+    </button>
+     {% else %}
     <button class="button is-success">
         Glasuj za ta film
     </button>
+    {% endif %}
 </form>
+
 {% endblock %}
