@@ -73,9 +73,10 @@ class Vloga(models.Model):
         verbose_name_plural = "Vloge"
 
 class DaniGlasovi(models.Model):
-    uporabnik = models.ForeignKey(User, on_delete=models.CASCADE)
-    film = models.ForeignKey(Film, on_delete=models.CASCADE)
+    uporabnik = models.ForeignKey(User, on_delete=models.CASCADE, related_name='obstojeci_glasovi')
+    film = models.ForeignKey(Film, on_delete=models.CASCADE, related_name='obstojeci_glasovi')
     class Meta:
+        indexes = [models.Index(fields=['uporabnik', 'film'])]
         constraints = [
             models.UniqueConstraint(
                 fields=["uporabnik", "film"],

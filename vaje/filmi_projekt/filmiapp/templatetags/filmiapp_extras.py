@@ -7,4 +7,4 @@ register = template.Library()
 def je_glasoval(uporabnik, film):
     if not uporabnik.is_authenticated:
         return False
-    return DaniGlasovi.objects.filter(uporabnik=uporabnik, film=film).exists()
+    return film.daniglasovi_set.filter(uporabnik=uporabnik).exists()

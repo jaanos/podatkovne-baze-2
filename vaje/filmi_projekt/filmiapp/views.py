@@ -90,7 +90,7 @@ def oseba_poisci(request):
     poizvedba = request.GET.get('zacetek', '')
     zelene_osebe = []
     if poizvedba:
-        zelene_osebe = Oseba.objects.filter(ime__istartswith=poizvedba)[:100]
+        zelene_osebe = Oseba.objects.filter(ime__iregex='\\b' + poizvedba)[:100]
     return render(request, 'filmiapp/oseba_poisci.html', {'poizvedba' : poizvedba, 'rezultat' : zelene_osebe})
 
 def oseba_podrobnosti(request, oseba_id):

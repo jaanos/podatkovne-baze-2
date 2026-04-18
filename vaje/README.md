@@ -358,8 +358,73 @@ Definiramo funkcijo `je_glasoval(uporabnik, film)`, ki bo vrnila `True`, če je 
  To funkcijo registriramo kar z dodajanjem dekoratorja `@register.filter`. Da bomo lahko to uporabili še v naši predlogi, moramo najprej na začetku predloge naše dodatne značke naložiti z:
 `{% load filmiapp_extras %}`, glasovanje pa potem lahko preverimo z `{% if user|je_glasoval:film %}` (torej ime funkcije gre v sredino, argumenta pa na obe strani).
 
+# 8. Vaje
+
+## Splošni komentar iz 8. Vaj
+
+## Boljši oseba_poisci pogled
+
+Na vajah smo najprej posodobili naš pogled `oseba_poisci`, ki je prej poiskal vse osebe iz tabele `Oseba`, katerih ime se začne z dano poizvedbo.
+Radi bi v iskane vključili tudi tiste, katerim se morda priimek začne z dano poizvedbo. Ima in priimek sta v naši bazi oba pod poljem `ime`, ločena s presledkom. Uporabiti je treba torej drugačni `.filter()`, morda tak, ki bi bil podoben `LIKE` v SQL.
+Izkaže se, da lahko uporabljamo regularne izraze - [regex](https://en.wikipedia.org/wiki/Regular_expression), ki nam omogočajo, da definiramo vzorec in v rezultat vključimo vsa imena, ki ustrezajo danemu vzorcu. Na [internetu](https://stackoverflow.com/questions/525635/regular-expression-match-start-or-whitespace) hitro najdemo, da je primeren vzorec `'\\b' + poizvedba`, ki bo ustrezal vsakemu "koncu besede", za katerim je naša poizvedba, kjer kot "konec besede" lahko začetek besede, presledek (ravno to kar hočemo) oz. katerikoli znak ki ni alfanumeričen (kar je mogoče ok za npr. pomišljaj, ampak ne za apostrof).
+V ta namen samo v filter namesto
+`istartswith=poizvedba`
+damo
+`iregex='\\b'+poizvedba`
+
+## Alternativno delovanje filtra je_glasoval
+
+Zadnjič smo naredili filter `je_glasoval`, ki uporabi:
+`DaniGlasovi.objects.filter(uporabnik=uporabnik, film=film).exists()`
+Rekli smo, da je to sicer ok, ampak da bi morda bilo lepše, če bi lahko klicali kar nekaj takega kot `uporabnik_glasovi(film).exists()`, da nam npr. ni treba uvozit `DaniGlasovi`.
+
+Čeprav nismo eksplicitno (za razliko od Vlog) dali `ManyToMany` polja v film, Django avtomatsko ve, da `DaniGlasovi` obstaja in
+`film.daniglasovi_set` se nanaša na vse vrstice v `DaniGlasovi`, ki vsebujejo dani film.
+Tako lahko zgornje nadomestimo z npr.
+`film.daniglasovi_set.filter(uporabnik=uporabnik).exists()`
+Ker je pa to nekoliko grdo (tale `_set`), lahko tudi definiramo svoja imena. To storimo tako, da v `ForeignKey` poljih v modelu za `DaniGlasovi` dodamo argument `related_name`.
+Npr, če filmom v `DaniGlasovi` dodamo `related_name='obstojeci_glasovi`, bomo lahko uporabili kar `film.obstojeci_glasovi.filter(uporabnik=uporabnik).exists()` (ime je vseeno mogoče malo nerodno in morda bi bilo bolje, da bi v `Film` kar eksplicitno dodali `ManyToMany` field. Pri tem bi morali paziti, da tudi to pri `FilmForm` izključimo iz obrazca!)
+
+`related_name` bi lahko uporabili tudi izven združevalnih tabel. Npr. v `Film` imamo `ManyToMany` polje `Vloge` s katerim lahko dostopamo do igralcev/režiserja v filmu. Kaj pa, če bi za dano osebo hoteli vedeti, v katerih filmih je sodeloval? V tem primeru, bi spet lahko uporabili `oseba.vloge_set...`, ali pa lepše ime, če bi `ManyToMany` polje v `Film` imelo `related_name`.
+
+## Učinkovitejši filter je_glasoval
+
+Prejšnje spremembe so v resnici v ozadju isti SQL in so torej bolj stvar okusa. Če bi hoteli, da `je_glasoval` deluje hitreje, bi morali uporabiti drugačen pristop. Najlažje je, da v tabelo `DaniGlasovi` na stolpca `film` in `uporabnik` (torej stolpca, po katerih nameravamo pogosto skupaj poizvedovati) dodamo [indeks](https://docs.djangoproject.com/en/6.0/ref/models/options/#indexes), o katerih ste govorili na predavanjih.
+To storimo z `Meta` class-om, kjer dodamo spremenljivko `indexes = [models.Index(fields=['uporabnik', 'film'])]`. `indexes` je seznam različnih indeksov na tabeli, vsakega pa definiramo z `models.Index([...])`. S tem postanejo poizvedbe cenejše, vendar pa moramo biti pazljivi, saj z večjo količino indeksov raste kompleksnost npr. vstavljanja novih podatkov v tabelo.
+
+## "Dolg od prej" - ocena v filmih
+
+Ko smo delali model za `Film` smo dodali polje:
+`ocena = models.DecimalField(max_digits=3, decimal_places=1, verbose_name="Ocena filma") # Omejimo to na [0,10]?`
+Sedaj bomo razrešili še ta komentar, torej omejili možne ocene na interval [0, 10], saj je trenutno legalna cena tudi npr. 15 (lahko preverimo).
+To v Django-tu naredimo z [validatorji](https://docs.djangoproject.com/en/6.0/ref/validators/). Konkretno, iz `django.core.validators` bomo uvozili `MinValueValidator` in `MaxValueValidator`.
+Pri `ocena` pa v `models.DecimalField` dodajmo še argument:
+`validators=[MinValueValidator(0, 'Ocena mora biti vsaj 0'), MaxValueValidator(10, 'Ocena je lahko največ 10')]`. Sedaj ni več mogoče npr. v obrazcu vnesti napačno oceno (ampak napačne ocene, ki so že v bazi bodo take tudi ostale!). Drugi argument teh validatorjev so tekst, ki se npr. v obrazcu izpiše, če pogoj prekršimo (privzeto je seveda v angleščini).
+
+## "Dolg od prej" - null=True v filmih
+
+V `Film` imamo tudi
+`# Opis - pazi glede null vrednosti za charfield`
+`opis = models.CharField(max_length=1000, blank=True, null=True, verbose_name="Opis filma", help_text="Opis filma, do 1000 znakov")`
+
+Komentar se nanaša na [opozorilo](https://docs.djangoproject.com/en/6.0/ref/models/fields/#null) v dokumentaciji, ki priporoča, naj se `null=True` ne uporablja za `CharField` in podobna (tekstovna) polja.
+
+Namreč z `null=True` (NULL so dovoljeni) imamo pri tekstu dva različna načina, s katerimi povemo, da podatek manjka - NULL ali pa prazen niz `''`. To lahko povzroči težave, saj bomo morali npr. vedno paziti, ali polje manjka na oba načina (če bi kje pozabili in bi npr. preverjali samo za NULL (None), bi bile lahko težave, če je niz prazen).
+
+Zato `null=True` odstranimo (privzeto je `False`). Ker pa še vedno nočemo, da je `opis` obvezen (`blank=True` samo pove, da v obrazcih ni potreben, v bazi ima v tabeli za filme še vedno nujno neko vrednost), dodamo še `default=''`. Privzeto je torej prazen.
+
+## Uvod v Linux in terminal
+
+Na koncu vaj smo začeli še z terminalom, kjer smo si pogledali nekaj zelo osnovnih ukazov, ki ste jih videli na predavanjih.
+Omenil sem zelo enostavno berljiv [tutorial](https://ryanstutorials.net/linuxtutorial/), ki gre res skozi osnove, pogledali pa smo si tudi ukaz `ssh` (ki deluje tudi v Windows Powershell-u), s katerim se pogosto povežemo na oddaljene strežnike.
+Povedali smo sintakso `ssh naslov_streznika -p stevilka_porta`. To nas poskuša povezati na streznik, kar z istim uporabniskim imenom, ki ga imamo lokalno na našem računalniku. `-p številka porta` je ponavadi odveč, saj je [standardno](https://en.wikipedia.org/wiki/Port_(computer_networking)), da se SSH dela preko porta 22, kar je tudi privzeta vrednost.
+Pogosto se hočemo na strežnik prijaviti z alternativnim uporabniškim imenom, kar storimo z `ssh uporabnisko_ime@naslov_streznika`.
 
 
+## TODO
 
+Stvari, ki jih bom najbrž dodal, ampak jih nismo (in ne bomo) obravnavali na vajah.
+- Dodajanje brisanje filma/oseb (trenutno je link mrtev)
+- Dodajanje testov za zgornje funkcionalnosti (omejitev ocen na [0, 10] in iskanje po npr. priimku)
 
 {% endraw %}
