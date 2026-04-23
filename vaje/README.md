@@ -421,7 +421,41 @@ Povedali smo sintakso `ssh naslov_streznika -p stevilka_porta`. To nas poskuša 
 Pogosto se hočemo na strežnik prijaviti z alternativnim uporabniškim imenom, kar storimo z `ssh uporabnisko_ime@naslov_streznika`.
 
 
-## TODO
+# 9. Vaje
+
+Na 9. Vajah smo se večinoma spoznavali z web interface-om za PostgreSQL [PhpPgAdmin](http://baza.fmf.uni-lj.si/phppgadmin/), kjer smo videli tudi nekaj naprednih funkcionalnosti, ki jih ponuja PostgreSQL.
+
+## Sprememba Django baze
+
+Nato smo začeli pisati novo `settings.py` (ki bo uvozila staro in povozila `DATABASES` spremenljivko), kjer nameravamo spremeniti podatkovno bazo.
+Kot piše v [dokumentaciji](https://docs.djangoproject.com/en/6.0/ref/databases/), bo treba za delo s sistemom PostgreSQL namestiti Python knjižnico `psycopg`.
+Vidimo tudi, da bomo v slovarju `default` v slovarju `DATABASES` enostavno spremenili `ENGINE` na `'django.db.backends.postgresql'`. 
+
+Kar se tiče podrobnosti konfiguracije, bi lahko uporabljali konfiguracijske datoteke, ki so specifične PostgreSQL, kot je to predlagano v dokumentaciji.
+Ker pa na tej točki nočemo dodatnih komplikacij z PostgreSQL (vseeno bi raje čim več naredili v Django-tu), bomo podatke kar spisali v `default` slovar, kot je to narejeno [na primeru tu](https://docs.djangoproject.com/en/6.0/ref/settings/#std-setting-DATABASES).
+Moramo torje povedati:
+- HOST: IP ali domena serverja, kjer se poganja PostgreSQL
+- PORT: za PostgreSQL je privzeti port 5432
+- NAME: Ime konkretne podatkovne baze na PostgreSQL
+- USER: Naše uporabniško ime pri katerem imamo zadostne pravice za dano bazo
+- PASSWORD: Pripadajoče geslo za našega uporabnika
+
+Teh podatkov vseeno načeloma nočemo imeti kar tako v kodi (morda bo npr. koda na več repozitorijih), zato jih bomo spravili v prperosto konfiguracijsko datoteko s pomočjo [django-environ](https://django-environ.readthedocs.io/en/latest/). Najprej torej namestimo še Python knjižnico `django-environ`. 
+
+Naša konfiguracija bo shranjena v datoteki `.env`, ki bo v mapi `filmi_projekt` (root našega Django projekta).
+Ta datoteka je tudi že v našem `.gitignore` in se ne bo pojavila na repozitoriju.
+### Primer .env datoteke
+```
+NAME=filmi_db
+USER=nas_username
+PASSWORD=nase_geslo
+HOST=baza.fmf.uni-lj.si
+PORT=5432
+```
+
+Pogledamo [django-environ quickstart](https://django-environ.readthedocs.io/en/latest/quickstart.html), kjer imamo lepo prikazano, kako potem dostopamo do podatkov, shranjenih v naši `.env` atoteki. S tem torej potencialno zaupnih podatkov kot so gesla ne hranimo direktno v kodi.
+
+# TODO
 
 Stvari, ki jih bom najbrž dodal, ampak jih nismo (in ne bomo) obravnavali na vajah.
 - Dodajanje brisanje filma/oseb (trenutno je link mrtev)
