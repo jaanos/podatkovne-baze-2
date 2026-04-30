@@ -455,6 +455,181 @@ PORT=5432
 
 Pogledamo [django-environ quickstart](https://django-environ.readthedocs.io/en/latest/quickstart.html), kjer imamo lepo prikazano, kako potem dostopamo do podatkov, shranjenih v naši `.env` atoteki. S tem torej potencialno zaupnih podatkov kot so gesla ne hranimo direktno v kodi.
 
+# 10. Vaje
+
+Na 10. vajah smo delali razne naloge iz PostgreSQL. Vse spodnje se lahko (delno ali v celote) reši tudi v `phpPgAdmin`
+
+## 1. Naloga
+
+### Naloga
+
+Ustvari pogled `znani_filmi(id, naslov, leto, glasovi)`, ki bo prikazal le filme z več kot 10000 glasovi. Takšna informacija je splošno zaželena za javnost, zato naj bo pogled za branje dostopen vsem. Poglej v bazo kakšnega od sošolcev in preveri, če res lahko bereš njihov pogled `znani_filmi`.
+
+### Rešitev
+
+```
+CREATE VIEW znani_filmi AS
+SELECT id, naslov, leto, glasovi
+FROM public.filmi
+WHERE glasovi >= 10000;
+
+GRANT SELECT ON znani_filmi TO PUBLIC;
+```
+
+## 2. Naloga
+
+### Naloga
+
+Kontaktiral nas je znan producent, ki želi za planiranje nadaljnih filmov imeti informacije o režiserjih uspešnih filmov. Ustvari pogled `uspesni_reziserji(id, ime)`, ki prikaže imena vseh režiserjev, ki so imeli vsaj en film z vsaj 10 miljonov dobička. Vlogo producenta firme naj odigra sošolec. Dostop do pogleda `uspesni_reziserji` dovoli samo njemu, saj nočemo, da te podatke izve širša javnost. Prepričajta se, da res lahko dostopa do informacij in da ostali ne morejo. Producent bi rad imel še opcijo dodajanja pravice pogleda svojim kolegom. Dodaj primerno pravico.
+
+### Rešitev
+
+```
+CREATE VIEW uspesni_reziserji AS
+SELECT os.id, os.ime
+FROM public.osebe as os
+JOIN public.vloge as vl on os.id = vl.oseba
+JOIN public.filmi as fi on vl.film = fi.id
+WHERE vl.tip = 'R'
+GROUP BY os.id, os.ime
+HAVING MAX(fi.zasluzek) >= 10000000;
+
+GRANT SELECT ON uspesni_reziserji TO username_sosolca WITH GRANT OPTION;
+```
+
+## 3. Naloga
+
+### Naloga A
+
+Sodelovati želimo z znanim klubom filmksih navdušencev.
+Klub želi imeti filme prikazane na svoj način. Ustvari pogled `lepsi_filmi(id, polni naslov)`, kjer je polni_naslov oblike "naslov ( leto )" in ga dobiš s stikanjem (operator ||) ustreznih stolpcev. Ustvari vlogo `član_kluba`, ki ima dostop do zgornjega pogleda. Dodaj sošolca k tej vlogi.
+
+### Rešitev A
+
+```
+CREATE VIEW lepsi_filmi AS
+SELECT id, naslov || ' ( ' || leto || ' )' as polni_naslov
+FROM public.filmi;
+
+CREATE ROLE clan_kluba;
+GRANT SELECT ON lepsi_filmi TO clan_kluba;
+GRANT clan_kluba to username_sosolca;
+```
+
+### Naloga B
+
+Klub želi imeti tudi pregled nad najnovejšimi filmi. Ustvari pogled `novi_filmi(id, naslov, dolzina, leto, ocena)`, ki vsebuje le filme, kjer je leto vsaj 2020. Ker želimo, da lahko klub tudi doda nove filme (naša baza morda nima zelo novih filmov) dodaj članom kluba še pravico za vstavljanje in spreminjanje v ta pogled. Ustvari pravilo DO INSTEAD, ki ob vstavljanju filma v novi_filmi pravzaprav vstavi isti film v našo glavno tabelo Filmi.
+
+### Rešitev B
+
+```
+CREATE VIEW novi_filmi AS
+SELECT id, naslov, dolzina, leto, ocena
+FROM public.filmi
+WHERE leto >= 2020;
+
+GRANT INSERT, UPDATE ON novi_filmi TO clan_kluba;
+
+CREATE RULE vstavljanje_novega_filma AS
+ON INSERT TO novi_filmi
+DO INSTEAD
+INSERT INTO public.filmi (id, naslov, dolzina, leto, ocena)
+VALUES (NEW.id, NEW.naslov, NEW.dolzina, NEW.leto, NEW.ocena);
+```
+
+### Naloga C
+
+Ta naloga poteka v parih. Ustvari vlogo `vodstvo_kluba` (ki je seveda tudi `clan_kluba`), ki ima še pravico ustvarjanja novih tabel v podatkovni bazi. Daj to vlogo sošolcu, potem pa naj ta ustvari tabelo `nagrade(id, film, ime, leto, rezultat)`. Za rezultat pričakujemo vrednosti 'zmaga' ali 'nominacija'. Tabelo filmi spremeni tako, da dodaš še stolpec, ki pove koliko nagrad je dan film dobil (privzeto seveda 0). S pomočjo pravila DO ALSO zagotovi, da se ob vnosu nove nagrade število nagrad v tabeli Filmi primerno poveča.
+
+## Rešitev C
+
+Mi poženemo:
+```
+CREATE ROLE vodstvo_kluba;
+GRANT clan_kluba TO vodstvo_kluba;
+GRANT CREATE ON SCHEMA public TO vodstvo_kluba;
+```
+
+Sošolec ustvari tabelo: (lahko kar v phppgadmin):
+```
+CREATE TABLE nagrade (
+    id SERIAL PRIMARY KEY,
+    film INTEGER NOT NULL REFERENCES public.filmi(id) ON DELETE CASCADE,
+    ime TEXT NOT NULL,
+    leto INTEGER NOT NULL CHECK (leto >= 1800),
+    rezultat TEXT NOT NULL CHECK (rezultat in ('zmaga', 'nominacija'))
+);
+```
+Potem spet mi:
+```
+ALTER TABLE public.filmi
+ADD COLUMN nagrade INTEGER NOT NULL DEFAULT 0;
+```
+Dodamo še pravilo:
+```
+CREATE RULE stevilo_nagrad AS
+ON INSERT TO public.nagrade
+DO ALSO
+UPDATE public.filmi
+SET nagrade = nagrade + 1
+WHERE id = NEW.film AND NEW.rezultat = 'zmaga';
+```
+
+## 4. Naloga
+
+### Naloga
+
+Sedaj hočemo podpirati še kritike filmov. Ustvari vlogo `kritik` in naredi tabelo `kritike(id, film, ime, ocena, komentar)`. Kritiki naj imajo pravico referenciranja na filme, nimajo pa dostopa do branja tabele filmi. Dodaj mu še pravico ustavljanja novih kritik v kritike.
+
+### Rešitev
+
+```
+CREATE ROLE kritik;
+
+CREATE TABLE kritike (
+    id SERIAL PRIMARY KEY,
+    film INTEGER NOT NULL REFERENCES public.filmi(id),
+    ime TEXT NOT NULL,
+    ocena REAL NOT NULL,
+    komentar TEXT NOT NULL
+);
+
+GRANT REFERENCES ON public.filmi TO kritik;
+GRANT ALL ON public.kritike TO kritik;
+```
+
+## Dodatne naloge
+
+### Prva dodatna
+
+Pri pravilu `vstavljanje_novega_filma` je v principu možno, da nekdo vstavi film, ki je pred 2020, saj tega ne preverjamo. Kako bi pravilo spremenil, da se to ne more zgoditi?
+
+### Prva rešitev
+```
+CREATE RULE vstavljanje_novega_filma AS
+ON INSERT TO novi_filmi
+WHERE NEW.leto >= 2020
+DO INSTEAD
+INSERT INTO public.filmi (id, naslov, dolzina, leto, ocena)
+VALUES (NEW.id, NEW.naslov, NEW.dolzina, NEW.leto, NEW.ocena);
+
+CREATE RULE vstavljanje_novega_filma_ilegalno AS
+ON INSERT TO novi_filmi
+WHERE NEW.leto < 2020
+DO INSTEAD NOTHING;
+```
+
+(Ta pristop še vedno ni zelo lep, saj uporabnik ob napačnem vstavljanju ne dobi nobene informacije o napaki)
+
+### Druga dodatna
+
+Dandanes se namesto pravil pogosto uporablja prožilce. Prepiši pravila iz prejšnjih nalog s prožilci.
+
+### Druga rešitev
+
+TODO
+
+
 # TODO
 
 Stvari, ki jih bom najbrž dodal, ampak jih nismo (in ne bomo) obravnavali na vajah.
